@@ -1,0 +1,27 @@
+﻿<#@template hostspecific="true"#> 
+<#
+ string version = Host.ResolveParameterValue(null, null, "Version");
+#>
+{ 
+ "Version":"4.0.0.0",
+ "Packages":[
+  {
+    "PackageName": "InfluxDB History",
+    "EXEFile": "HSPI_Tasmota.exe",
+    "ID": "Tasmota",
+    "Version": "<#=version#>",
+    "UC": 63,
+    "ZipFile": "HSPI_Tasmota_<#=version#>.zip",
+    "Author": "dk307",
+    "Price": "Free",
+    "ReleaseNotesURL": "https://github.com/dk307/HSPI_Tasmota",
+    "ShortDescription": "Stores history of device values in InfluxDB",
+    "SupportURL": "https://github.com/dk307/HSPI_Tasmota/issues",
+    "Tags": [
+      "Free",
+      "History",
+      "Beta"
+    ]
+  } 
+]
+}
