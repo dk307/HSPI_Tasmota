@@ -30,5 +30,9 @@
 
         public static readonly string DevicePlugInDataTypeKey = PlugInId.ToLowerInvariant() + ".plugindatatype";
 #pragma warning restore CA1308 // Normalize strings to uppercase
+
+
+
+        public const string ConfigPageId = "conflig-page-id-tasmota";
     }
 }

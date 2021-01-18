@@ -1,8 +1,12 @@
 ﻿using HomeSeer.PluginSdk;
 using HomeSeer.PluginSdk.Devices;
+using Hspi.DeviceData;
 using Hspi.Utils;
+using Nito.AsyncEx;
 using NullGuard;
 using System;
+using System.Collections.Immutable;
+using System.Threading.Tasks;
 using static System.FormattableString;
 
 namespace Hspi
@@ -56,7 +60,9 @@ namespace Hspi
                 logger.Info("Starting Plugin");
 
                 // Device Add Page
-                HomeSeerSystem.RegisterDeviceIncPage(Id, "addtasmotadevice.html", "Add Tasmota Device");
+                HomeSeerSystem.RegisterDeviceIncPage(Id, "adddevice.html", "Add Tasmota Device");
+
+                RestartProcessing();
 
                 logger.Info("Plugin Started");
             }
@@ -68,9 +74,33 @@ namespace Hspi
             }
         }
 
+        private void RestartProcessing()
+        {
+            Utils.TaskHelper.StartAsyncWithErrorChecking("Device Start", StartDevices, ShutdownCancellationToken);
+        }
+
+        private async Task StartDevices()
+        {
+            using (var sync = await deviceManagerLock.EnterAsync(ShutdownCancellationToken))
+            {
+                tasmotaDeviceManager?.Dispose();
+                tasmotaDeviceManager = new TasmotaDeviceManager(HomeSeerSystem,
+                                                                ShutdownCancellationToken);
+            }
+        }
+
+        private async Task<ImmutableDictionary<int, TasmotaDevice>> GetTasmotaDevices()
+        {
+            using (var sync = await deviceManagerLock.EnterAsync(ShutdownCancellationToken))
+            {
+                return tasmotaDeviceManager?.ImportDevices ?? ImmutableDictionary<int, TasmotaDevice>.Empty;
+            }
+        }
+
         private void PluginConfigChanged()
         {
             UpdateDebugLevel();
+            RestartProcessing();
         }
 
         private void UpdateDebugLevel()
@@ -78,6 +108,9 @@ namespace Hspi
             this.LogDebug = pluginConfig.DebugLogging;
             Logger.ConfigureLogging(LogDebug, HomeSeerSystem);
         }
+
+        private readonly AsyncMonitor deviceManagerLock = new AsyncMonitor();
+        private TasmotaDeviceManager tasmotaDeviceManager;
 
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
         private bool disposedValue;
