@@ -6,6 +6,8 @@ using Nito.AsyncEx;
 using NullGuard;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -26,6 +28,7 @@ namespace Hspi.DeviceData
         public static string RootDeviceType => "tasmota-root";
 
         public override string DeviceType => RootDeviceType;
+
         public static async Task<int> CreateNew(IHsController HS,
                                                 TasmotaDeviceInfo data,
                                                 CancellationToken cancellationToken)
@@ -55,7 +58,6 @@ namespace Hspi.DeviceData
             return new TasmotaStatus(deviceDetails);
         }
 
- 
         private static async Task<string> SendWebCommandToDevice(TasmotaDeviceInfo importDeviceData,
                                                                  string command,
                                                                  CancellationToken cancellationToken)
@@ -79,68 +81,101 @@ namespace Hspi.DeviceData
             return await result.Content.ReadAsStringAsync().ConfigureAwait(false);
         }
 
-        private int CreateFeature(TasmotaStatus deviceStatus, string sensorName)
+        private void AddDataTypeSpecficProperties(TasmotaDeviceFeature feature, ref FeatureFactory featureFactory)
+        {
+            switch (feature.DataType)
+            {
+                case TasmotaDeviceFeature.FeatureDataType.DewPoint:
+                case TasmotaDeviceFeature.FeatureDataType.Voltage:
+                case TasmotaDeviceFeature.FeatureDataType.LuminanceLux:
+                case TasmotaDeviceFeature.FeatureDataType.TemperatureF:
+                case TasmotaDeviceFeature.FeatureDataType.TemperatureC:
+                    {
+                        string name = feature.DataType.ToString().ToLowerInvariant();
+                        string path = Path.ChangeExtension(Path.Combine(PlugInData.PlugInId, "images", name), "png");
+                        featureFactory = featureFactory.AddGraphicForRange(path, int.MinValue, int.MaxValue);
+                    }
+                    break;
+
+                default:
+                    {
+                        string logo = Path.Combine(PlugInData.PlugInId, "images", "tasmota.svg");
+                        featureFactory = featureFactory.AddGraphicForRange(logo, int.MinValue, int.MaxValue);
+                    }
+                    break;
+            }
+        }
+
+        private int CreateFeature(TasmotaDeviceFeature feature)
         {
             var newFeatureData = FeatureFactory.CreateFeature(PlugInData.PlugInId)
-                .WithName(sensorName)
+                .WithName(feature.Name)
                 .WithLocation(PlugInData.PlugInName)
                 .WithMiscFlags(EMiscFlag.SetDoesNotChangeLastChange, EMiscFlag.StatusOnly)
                 .AsType(EFeatureType.Generic, 0)
-                .WithExtraData(HSDeviceHelper.CreatePlugInExtraDataForDeviceType(sensorName))
-                .PrepareForHsDevice(RefId);
+                .WithExtraData(HSDeviceHelper.CreatePlugInExtraDataForDeviceType(feature.FullUniqueId));
 
-            return HS.CreateFeatureForDevice(newFeatureData);
+            AddDataTypeSpecficProperties(feature, ref newFeatureData);
+
+            return HS.CreateFeatureForDevice(newFeatureData.PrepareForHsDevice(RefId));
         }
 
         private async Task UpdateDeviceProperties()
         {
             try
             {
-                using (var _ = await featureLock.EnterAsync())
+                using (var _ = await featureLock.EnterAsync().ConfigureAwait(false))
                 {
+                    var data = this.Data;
+
                     //update name
                     string deviceDetails = await SendWebCommandToDevice(this.Data, "STATUS 0", cancellationToken).ConfigureAwait(false);
                     var deviceStatus = new TasmotaStatus(deviceDetails);
                     HS.UpdatePropertyByRef(RefId, EProperty.Name, deviceStatus.DeviceName);
 
- 
-                    Dictionary<string, int> featuresNew = new Dictionary<string, int>();
+                    var featuresNew = new Dictionary<TasmotaDeviceFeature, int>();
 
                     var device = HS.GetDeviceWithFeaturesByRef(RefId);
 
-                    //foreach (var sensor in sensors)
-                    //{
-                    //    int index = device.Features.FindIndex(
-                    //        x => HSDeviceHelper.GetDeviceTypeFromPlugInData(x.PlugExtraData) == sensor.Key);
+                    foreach (var feature in data.EnabledFeatures)
+                    {
+                        int index = device.Features.FindIndex(
+                            x => HSDeviceHelper.GetDeviceTypeFromPlugInData(x.PlugExtraData) == feature.FullUniqueId);
 
-                    //    if (index == -1)
-                    //    {
-                    //        int featureRefId = CreateFeature(deviceStatus, sensor.Key);
-                    //        featuresNew.Add(sensor.Key, RefId);
-                    //        logger.Info(Invariant($"Created feature {sensor} for {device.Name}"));
+                        if (index == -1)
+                        {
+                            int featureRefId = CreateFeature(feature);
+                            featuresNew.Add(feature, featureRefId);
+                            logger.Info(Invariant($"Created feature {feature.Name} for {device.Name}"));
+                        }
+                        else
+                        {
+                            logger.Debug(Invariant($"Found feature {feature.Name} for {device.Name}"));
+                            featuresNew.Add(feature, device.Features[index].Ref);
+                            UpdateFeature(deviceStatus, feature.Id);
+                        }
+                    }
 
-                    //    }
-                    //    else
-                    //    {
-                    //        UpdateFeature(deviceStatus, sensor.Key);
-                    //    }
-
-                    //}
-
-                    //// delete removed sensors
-                    //foreach (var feature in device.Features)
-                    //{
-                    //    string type = HSDeviceHelper.GetDeviceTypeFromPlugInData(feature.PlugExtraData);
-
-                    //    if (!sensors.ContainsKey(type))
-                    //    {
-                    //        logger.Info(Invariant($"Deleting unknown feature {feature.Name} for {device.Name}"));
-                    //        HS.DeleteFeature(feature.Ref);
-                    //    }
-                    //}
+                    // delete removed sensors
+                    foreach (var feature in device.Features)
+                    {
+                        if (!featuresNew.ContainsValue(feature.Ref))
+                        {
+                            logger.Info(Invariant($"Deleting unknown feature {feature.Name} for {device.Name}"));
+                            HS.DeleteFeature(feature.Ref);
+                        }
+                    }
 
                     // recreate features
                     features = featuresNew;
+
+                    //update Value
+                    foreach (var feature in features)
+                    {
+                        var featureValue = deviceStatus.GetValue(feature.Key);
+
+                        // HSDeviceHelper.UpdateDeviceValue(HS, feature.Value,  );
+                    }
                 }
             }
             catch (Exception ex)
@@ -164,6 +199,6 @@ namespace Hspi.DeviceData
 
         private readonly CancellationToken cancellationToken;
         private readonly AsyncMonitor featureLock = new AsyncMonitor();
-        private IReadOnlyDictionary<string, int> features;
+        private IReadOnlyDictionary<TasmotaDeviceFeature, int> features;
     }
 }

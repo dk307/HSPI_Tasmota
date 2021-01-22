@@ -60,7 +60,7 @@ namespace Hspi
                     var tasmotaStatus = tasmotaDevice.GetStatus().ResultForSync();
                     var possibleFeatures = tasmotaStatus.GetPossibleFeatures();
 
-                    var groups = possibleFeatures.GroupBy((x) => x.Type);
+                    var groups = possibleFeatures.GroupBy((x) => x.Source);
 
                     foreach (var group in groups)
                     {
@@ -80,14 +80,46 @@ namespace Hspi
             return page.Page.ToJsonString();
 
             void AddFeatureEnabledOptions(string name,
-                                          IEnumerable<TasmotaDeviceInfo.TasmotaEnabledFeature> possibleFeatures,
-                                          ImmutableHashSet<TasmotaDeviceInfo.TasmotaEnabledFeature> enabledList)
+                                          IEnumerable<TasmotaDeviceFeature> possibleFeatures,
+                                          ImmutableHashSet<TasmotaDeviceFeature> enabledList)
             {
-                page = page.WithLabel(name, "Create Features for " + name);
                 foreach (var element in possibleFeatures)
                 {
                     string id = CreateIdForFeatureType(element);
-                    page = page.WithCheckBox(id, element.Name, enabledList.Contains(element));
+                    var typeOptions = new List<string>();
+                    var typeOptionKeys = new List<string>();
+
+                    int selected = -1;
+                    int i = 0;
+                    int selectNone = -1;
+                    foreach (var value in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureDataType>())
+                    {
+                        typeOptions.Add(EnumHelper.GetDescription(value));
+                        typeOptionKeys.Add(value.ToString());
+
+                        if (enabledList.Contains(element.WithNewDataType(value)))
+                        {
+                            selected = i;
+                        }
+
+                        if (value == TasmotaDeviceFeature.FeatureDataType.None)
+                        {
+                            selectNone = i;
+                        }
+
+                        i++;
+                    }
+
+                    if (selected == -1)
+                    {
+                        selected = selectNone;
+                    }
+
+                    page = page.WithDropDownSelectList(id,
+                                                       Invariant($"{name}:{element.Name}"),
+                                                       typeOptions,
+                                                       typeOptionKeys,
+                                                       selected);
                 }
             }
         }
@@ -111,10 +143,10 @@ namespace Hspi
                     var tasmotaStatus = tasmotaDevice.GetStatus().ResultForSync();
                     var possibleFeatures = tasmotaStatus.GetPossibleFeatures();
 
-                    var newList = new HashSet<TasmotaDeviceInfo.TasmotaEnabledFeature>(data.EnabledFeatures);
+                    var newList = new HashSet<TasmotaDeviceFeature>(data.EnabledFeatures);
                     foreach (var feature in possibleFeatures)
                     {
-                        CheckToggleValue(changes, newList, feature);
+                        CheckValue(changes, newList, feature);
                     }
 
                     tasmotaDevice.Data = data.CreateNew(null, newList);
@@ -141,32 +173,32 @@ namespace Hspi
                 return false;
             }
 
-            void CheckToggleValue(IDictionary<string, string> changes,
-                                  HashSet<TasmotaDeviceInfo.TasmotaEnabledFeature> newList,
-                                  TasmotaDeviceInfo.TasmotaEnabledFeature feature)
+            void CheckValue(IDictionary<string, string> changes,
+                                  HashSet<TasmotaDeviceFeature> newList,
+                                  TasmotaDeviceFeature feature)
             {
                 string id = CreateIdForFeatureType(feature);
                 if (changes.TryGetValue(id, out var stringValue))
                 {
-                    var value = Convert.ToBoolean(stringValue, CultureInfo.InvariantCulture);
+                    int intValue = Convert.ToInt32(stringValue, CultureInfo.InvariantCulture);
 
-                    if (value)
+                    //always remove and add later to remove old data type
+                    var featureNoDataType = feature.WithNewDataType(null);
+                    newList.RemoveWhere(x => x.WithNewDataType(null) == featureNoDataType);
+
+                    var value = EnumHelper.GetValues<TasmotaDeviceFeature.FeatureDataType>().ToArray()[intValue];
+
+                    if (value != TasmotaDeviceFeature.FeatureDataType.None)
                     {
-                        newList.Add(feature);
-                    }
-                    else
-                    {
-                        newList.Remove(feature);
+                        newList.Add(feature.WithNewDataType(value));
                     }
                 }
             }
         }
 
-        private static string CreateIdForFeatureType(TasmotaDeviceInfo.TasmotaEnabledFeature feature)
+        private static string CreateIdForFeatureType(TasmotaDeviceFeature feature)
         {
-            string id = EnumHelper.GetDescription(feature.Type) + "." + feature.Id;
-            id = id.Replace('.', '_');
-            return id;
+            return feature.FullUniqueId.Replace('.', '_');
         }
     }
 }

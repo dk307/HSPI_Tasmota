@@ -11,15 +11,15 @@ namespace Hspi.DeviceData
         public TasmotaDeviceInfo(Uri uri,
                                 [AllowNull] string user,
                                 [AllowNull] string password,
-                                [AllowNull] IEnumerable<TasmotaEnabledFeature> enabledFeatures)
+                                [AllowNull] IEnumerable<TasmotaDeviceFeature> enabledFeatures)
         {
             Uri = uri;
             User = user;
             Password = password;
-            EnabledFeatures = enabledFeatures?.ToImmutableHashSet() ?? ImmutableHashSet<TasmotaEnabledFeature>.Empty;
+            EnabledFeatures = enabledFeatures?.ToImmutableHashSet() ?? ImmutableHashSet<TasmotaDeviceFeature>.Empty;
         }
 
-        public ImmutableHashSet<TasmotaEnabledFeature> EnabledFeatures { get; }
+        public ImmutableHashSet<TasmotaDeviceFeature> EnabledFeatures { get; }
         public string Password { get; }
         public Uri Uri { get; }
         public string User { get; }
@@ -29,7 +29,7 @@ namespace Hspi.DeviceData
 #pragma warning restore CA1822 // Mark members as static
 
         public TasmotaDeviceInfo CreateNew([AllowNull] IDictionary<string, string> changes,
-                                           [AllowNull] IEnumerable<TasmotaEnabledFeature> enabledFeatures)
+                                           [AllowNull] IEnumerable<TasmotaDeviceFeature> enabledFeatures)
         {
             string user = null;
             string password = null;

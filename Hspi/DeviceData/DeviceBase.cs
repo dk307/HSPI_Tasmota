@@ -47,5 +47,7 @@ namespace Hspi.DeviceData
             PlugExtraData extraData = CreatePlugInExtraData(data, DeviceType);
             HS.UpdatePropertyByRef(RefId, EProperty.PlugExtraData, extraData);
         }
+
+       
     }
 }

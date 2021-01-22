@@ -19,30 +19,60 @@ namespace Hspi.DeviceData
             }
         }
 
-        public IList<TasmotaDeviceInfo.TasmotaEnabledFeature> GetPossibleFeatures()
+        public object GetValue(TasmotaDeviceFeature feature)
         {
-            var list = new List<TasmotaDeviceInfo.TasmotaEnabledFeature>();
+            var child = GetObject(feature.Source) as JObject;
 
-            list.AddRange(AddForChild(deviceStatus["StatusSTS"].DeepClone() as JObject, 
-                                      TasmotaDeviceInfo.TasmotaEnabledFeature.FeatureType.State));
-            list.AddRange(AddForChild(deviceStatus["StatusSNS"].DeepClone() as JObject, 
-                                      TasmotaDeviceInfo.TasmotaEnabledFeature.FeatureType.Sensor));
+            if (child != null)
+            {
+                var token = child.SelectToken(feature.Id);
+                return token.ToObject<object>();
+            }
+
+            return null;
+        }
+
+        public IList<TasmotaDeviceFeature> GetPossibleFeatures()
+        {
+            var list = new List<TasmotaDeviceFeature>();
+
+            list.AddRange(AddForChild(TasmotaDeviceFeature.FeatureSource.State));
+            list.AddRange(AddForChild(TasmotaDeviceFeature.FeatureSource.Sensor));
 
             return list;
 
-            IList<TasmotaDeviceInfo.TasmotaEnabledFeature> AddForChild(JObject child,
-                                                                       TasmotaDeviceInfo.TasmotaEnabledFeature.FeatureType featureType)
+            IList<TasmotaDeviceFeature> AddForChild(TasmotaDeviceFeature.FeatureSource featureType)
             {
-                IEnumerable<JToken> jTokens = child.Descendants().Where(p => !p.Any());
-                var childResults = jTokens.Aggregate(new List<TasmotaDeviceInfo.TasmotaEnabledFeature>(),
-                                                     (paths, jToken) =>
-                {
-                    paths.Add(new TasmotaDeviceInfo.TasmotaEnabledFeature(jToken.Path, jToken.Path, featureType));
-                    return paths;
-                });
+                var child = GetObject(featureType) as JObject;
 
-                return childResults;
+                if (child != null)
+                {
+                    IEnumerable<JToken> jTokens = child.Descendants().Where(p => !p.Any());
+                    var childResults = jTokens.Aggregate(new List<TasmotaDeviceFeature>(),
+                                                         (paths, jToken) =>
+                    {
+                        paths.Add(new TasmotaDeviceFeature(jToken.Path, jToken.Path, featureType, null));
+                        return paths;
+                    });
+                    return childResults;
+                }
+
+                return new List<TasmotaDeviceFeature>();
             }
+        }
+
+        private JToken GetObject(TasmotaDeviceFeature.FeatureSource type)
+        {
+            switch (type)
+            {
+                case TasmotaDeviceFeature.FeatureSource.Sensor:
+                    return deviceStatus["StatusSNS"]?.DeepClone();
+
+                case TasmotaDeviceFeature.FeatureSource.State:
+                    return deviceStatus["StatusSTS"]?.DeepClone();
+            }
+
+            return null;
         }
 
         private readonly JObject deviceStatus;
