@@ -7,6 +7,18 @@ using System.ComponentModel;
 
 namespace Hspi.DeviceData
 {
+    [System.AttributeUsage(System.AttributeTargets.All)
+]
+    public class UnitAttribute : System.Attribute
+    {
+        public UnitAttribute(string unit)
+        {
+            Unit = unit;
+        }
+
+        public string Unit { get; }
+    }
+
     public readonly struct TasmotaDeviceFeature : IEquatable<TasmotaDeviceFeature>
     {
         public TasmotaDeviceFeature(string id, string name, FeatureSource source, [AllowNull] FeatureDataType? dataType)
@@ -36,17 +48,22 @@ namespace Hspi.DeviceData
             GenericString = 102,
 
             [Description("Temperature(F)")]
+            [Unit("F")]
             TemperatureF = 3,
 
+            [Unit("%")]
             Humidity = 4,
+
             DewPoint = 5,
 
             [Description("IP Address")]
             IPAddress = 6,
 
+            [Unit("V")]
             Voltage = 7,
 
             [Description("Duration in Seconds")]
+            [Unit("seconds")]
             DurationSeconds = 8,
 
             Time = 9,
@@ -58,9 +75,11 @@ namespace Hspi.DeviceData
             OnOffStateControl = 11,
 
             [Description("Luminance in Lux")]
+            [Unit("Lux")]
             LuminanceLux = 12,
 
             [Description("Temperature(C)")]
+            [Unit("C")]
             TemperatureC = 13,
         }
 

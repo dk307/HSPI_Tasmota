@@ -106,7 +106,7 @@ namespace Hspi
         private void UpdateDebugLevel()
         {
             this.LogDebug = pluginConfig.DebugLogging;
-            Logger.ConfigureLogging(LogDebug, HomeSeerSystem);
+            Logger.ConfigureLogging(LogDebug, pluginConfig.LogToFile, HomeSeerSystem);
         }
 
         private readonly AsyncMonitor deviceManagerLock = new AsyncMonitor();
