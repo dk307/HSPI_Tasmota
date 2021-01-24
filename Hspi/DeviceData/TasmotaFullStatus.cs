@@ -1,12 +1,15 @@
 ﻿using Newtonsoft.Json.Linq;
+using NullGuard;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace Hspi.DeviceData
 {
-    internal class TasmotaStatus
+    [NullGuard(ValidationFlags.Arguments | ValidationFlags.NonPublic)]
+
+    internal sealed class TasmotaFullStatus
     {
-        public TasmotaStatus(string jsonStatus)
+        public TasmotaFullStatus(string jsonStatus)
         {
             deviceStatus = JObject.Parse(jsonStatus);
         }
@@ -19,17 +22,17 @@ namespace Hspi.DeviceData
             }
         }
 
-        public object GetValue(TasmotaDeviceFeature feature)
+        public T GetValue<T>(TasmotaDeviceFeature feature)
         {
             var child = GetObject(feature.Source) as JObject;
 
             if (child != null)
             {
                 var token = child.SelectToken(feature.Id);
-                return token.ToObject<object>();
+                return token.ToObject<T>();
             }
 
-            return null;
+            throw new KeyNotFoundException();
         }
 
         public IList<TasmotaDeviceFeature> GetPossibleFeatures()
