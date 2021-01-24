@@ -7,17 +7,6 @@ using System.ComponentModel;
 
 namespace Hspi.DeviceData
 {
-    [System.AttributeUsage(System.AttributeTargets.All)
-]
-    public class UnitAttribute : System.Attribute
-    {
-        public UnitAttribute(string unit)
-        {
-            Unit = unit;
-        }
-
-        public string Unit { get; }
-    }
 
     public readonly struct TasmotaDeviceFeature : IEquatable<TasmotaDeviceFeature>
     {
@@ -42,6 +31,7 @@ namespace Hspi.DeviceData
             GenericDouble = 100,
 
             [Description("Percentage")]
+            [Unit("%")]
             GenericPercentage = 101,
 
             [Description("String")]
@@ -81,6 +71,21 @@ namespace Hspi.DeviceData
             [Description("Temperature(C)")]
             [Unit("C")]
             TemperatureC = 13,
+
+            [Unit("A")]
+            Amperage = 14,
+
+            [Unit("Watts")]
+            Power = 15,
+
+            [Unit("VA")]
+            ApparentPower = 16,
+
+            [Unit("VAr")]
+            ReactivePower = 17,
+
+            [Unit("kWh")]
+            EnergyHWhs = 18,
         }
 
         public enum FeatureSource
