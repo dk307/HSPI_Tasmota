@@ -33,8 +33,10 @@ namespace Hspi.DeviceData
         public TasmotaFullStatus DeviceStatus { get; private set; }
         public override string DeviceType => RootDeviceType;
 
+        private string MqttTopicPrefix => DeviceStatus.MqttStatus["Prefix3"];
+
         public static async Task<int> CreateNew(IHsController HS,
-                                                TasmotaDeviceInfo data,
+                                                        TasmotaDeviceInfo data,
                                                 CancellationToken cancellationToken)
         {
             var deviceStatus = await TasmotaDeviceInterface.GetStatus(data, cancellationToken).ConfigureAwait(false);
@@ -107,7 +109,7 @@ namespace Hspi.DeviceData
         }
 
         private IDictionary<TasmotaDeviceFeature, int> CreateAndUpdateFeatures(TasmotaDeviceInfo data,
-                                                                                   HsDevice device)
+                                                                               HsDevice device)
         {
             var featuresNew = new Dictionary<TasmotaDeviceFeature, int>();
             foreach (var feature in data.EnabledFeatures)
@@ -117,7 +119,7 @@ namespace Hspi.DeviceData
 
                 if (index == -1)
                 {
-                    int featureRefId = CreateFeature(feature);
+                    int featureRefId = CreateDeviceFeature(feature);
                     featuresNew.Add(feature, featureRefId);
                     logger.Info(Invariant($"Created feature {feature.Name} for {device.Name}"));
                 }
@@ -132,7 +134,8 @@ namespace Hspi.DeviceData
             // delete removed sensors
             foreach (var feature in device.Features)
             {
-                if (!featuresNew.ContainsValue(feature.Ref))
+                if (!featuresNew.ContainsValue(feature.Ref) &&
+                    (HSDeviceHelper.GetDeviceTypeFromPlugInData(feature.PlugExtraData) != LWTDeviceType))
                 {
                     logger.Info(Invariant($"Deleting unknown feature {feature.Name} for {device.Name}"));
                     HS.DeleteFeature(feature.Ref);
@@ -141,10 +144,31 @@ namespace Hspi.DeviceData
             return featuresNew;
         }
 
-        private int CreateFeature(TasmotaDeviceFeature feature)
+        private int CreateAndUpdateLWTFeature(HsDevice device)
+        {
+            int? lwtRefId = null;
+            foreach (var feature in device.Features)
+            {
+                if (HSDeviceHelper.GetDeviceTypeFromPlugInData(feature.PlugExtraData) == LWTDeviceType)
+                {
+                    return feature.Ref;
+                }
+            }
+
+            if (lwtRefId == null)
+            {
+                lwtRefId = CreateLWTFeature();
+            }
+
+            // HSDeviceHelper.UpdateDeviceValue(HS, lwtRefId.Value, OffValue);
+
+            return lwtRefId.Value;
+        }
+
+        private int CreateDeviceFeature(TasmotaDeviceFeature feature)
         {
             string featureName = feature.DataType.ToString().ToLowerInvariant();
-            string imagePath = Path.ChangeExtension(Path.Combine(PlugInData.PlugInId, "images", featureName), "png");
+            string imagePath = CreateImagePath(featureName);
 
             FeatureFactory newFeatureData = null;
 
@@ -166,7 +190,7 @@ namespace Hspi.DeviceData
                 case TasmotaDeviceFeature.FeatureDataType.OnOffStateControl:
                     {
                         var statusTexts = DeviceStatus.SwitchText;
-                        newFeatureData = FeatureFactory.CreateGenericBinaryControl(PlugInData.PlugInId, feature.Name, 
+                        newFeatureData = FeatureFactory.CreateGenericBinaryControl(PlugInData.PlugInId, feature.Name,
                                                                                    statusTexts.GetValueOrDefault("StateText2", "On"),
                                                                                    statusTexts.GetValueOrDefault("StateText1", "Off"), OnValue, OffValue)
                                                        .WithMiscFlags(EMiscFlag.SetDoesNotChangeLastChange);
@@ -194,31 +218,60 @@ namespace Hspi.DeviceData
             return featureRefId;
         }
 
+        private static string CreateImagePath(string featureName)
+        {
+            return Path.ChangeExtension(Path.Combine(PlugInData.PlugInId, "images", featureName), "png");
+        }
+
+        private int CreateLWTFeature()
+        {
+            var newFeatureData = FeatureFactory.CreateFeature(PlugInData.PlugInId)
+                               .WithName("Device MQTT Status")
+                               .WithMiscFlags(EMiscFlag.SetDoesNotChangeLastChange, EMiscFlag.StatusOnly)
+                               .WithLocation(PlugInData.PlugInName)
+                               .AsType(EFeatureType.Generic, 0)
+                               .WithExtraData(HSDeviceHelper.CreatePlugInExtraDataForDeviceType(LWTDeviceType))
+                               .AddGraphicForValue(CreateImagePath("online"), OnValue, LWTOnline)
+                               .AddGraphicForValue(CreateImagePath("offline"), OffValue, LWTOffline)
+                               .PrepareForHsDevice(RefId);
+
+            int featureRefId = HS.CreateFeatureForDevice(newFeatureData);
+            return featureRefId;
+        }
+
         private async Task MQTTSubscribe()
         {
             // Setup and start a managed MQTT client.
             var mqttServerDetails = DeviceStatus.MqttServerDetails;
-            var options = new ManagedMqttClientOptionsBuilder()
-                .WithAutoReconnectDelay(TimeSpan.FromSeconds(10))
-                .WithClientOptions(new MqttClientOptionsBuilder()
-                    .WithClientId("Homeseer")
-                    .WithTcpServer(mqttServerDetails.Host, mqttServerDetails.Port)
-                    .Build())
-                .Build();
 
-            mqttClient = new MqttFactory().CreateManagedMqttClient();
-
-            var topicFiltersBuilder3 = new MqttTopicFilterBuilder()
-                                          .WithTopic(DeviceStatus.MqttStatus["Prefix3"] + "+");
-
-            mqttClient.UseApplicationMessageReceivedHandler(async e =>
+            if (!string.IsNullOrWhiteSpace(mqttServerDetails.Host))
             {
-                await ProcessMQTTMessage(e.ApplicationMessage).ConfigureAwait(false);
-            });
-            await mqttClient.SubscribeAsync(topicFiltersBuilder3.Build()).ConfigureAwait(false);
+                var options = new ManagedMqttClientOptionsBuilder()
+                    .WithAutoReconnectDelay(TimeSpan.FromSeconds(10))
+                    .WithClientOptions(new MqttClientOptionsBuilder()
+                        .WithClientId(Invariant($"Homeseer-{RefId}"))
+                        .WithTcpServer(mqttServerDetails.Host, mqttServerDetails.Port)
+                        .Build())
+                    .Build();
 
-            cancellationToken.Register(() => mqttClient.StopAsync());
-            await mqttClient.StartAsync(options).ConfigureAwait(false);
+                mqttClient = new MqttFactory().CreateManagedMqttClient();
+
+                var topicFiltersBuilder3 = new MqttTopicFilterBuilder()
+                                              .WithTopic(MqttTopicPrefix + "+");
+
+                mqttClient.UseApplicationMessageReceivedHandler(async e =>
+                {
+                    await ProcessMQTTMessage(e.ApplicationMessage).ConfigureAwait(false);
+                });
+                await mqttClient.SubscribeAsync(topicFiltersBuilder3.Build()).ConfigureAwait(false);
+
+                cancellationToken.Register(() => mqttClient.StopAsync());
+                await mqttClient.StartAsync(options).ConfigureAwait(false);
+            }
+            else
+            {
+                logger.Error(Invariant($"{Name} does not have valid MQTT Configuration"));
+            }
         }
 
         private async Task ProcessMQTTMessage(MqttApplicationMessage message)
@@ -227,29 +280,34 @@ namespace Hspi.DeviceData
 
             try
             {
+                string payload = Encoding.UTF8.GetString(message.Payload);
                 using (var _ = await featureLock.EnterAsync(cancellationToken).ConfigureAwait(false))
                 {
-                    var mqttStatus = DeviceStatus.MqttStatus;
+                    var mqttTopicPrefix = MqttTopicPrefix;
 
-                    foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
+                    if ((mqttTopicPrefix + "LWT") == topic)
                     {
-                        var sourceMQTTTopic = mqttStatus["Prefix3"] + sourceType.ToString().ToUpperInvariant();
-                        if (topic == sourceMQTTTopic)
+                        UpdateLWTValue(payload);
+                    }
+                    else
+                    {
+                        foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
                         {
-                            string payload = Encoding.UTF8.GetString(message.Payload);
-                            UpdateDevicesValues(new TasmotaStatus(sourceType, JObject.Parse(payload)));
+                            var sourceMQTTTopic = mqttTopicPrefix + sourceType.ToString().ToUpperInvariant();
+                            if (topic == sourceMQTTTopic)
+                            {
+                                UpdateDevicesValues(new TasmotaStatus(sourceType, JObject.Parse(payload)));
+                            }
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                if (ex.IsCancelException())
+                if (!ex.IsCancelException())
                 {
-                    throw;
+                    logger.Warn(Invariant($"Failed to process mqtt {topic} with {ExceptionHelper.GetFullMessage(ex)} for {Name}"));
                 }
-
-                logger.Warn(Invariant($"Failed to process mqtt {topic} with {ExceptionHelper.GetFullMessage(ex)} for {Name}"));
             }
         }
 
@@ -265,6 +323,8 @@ namespace Hspi.DeviceData
                     HS.UpdatePropertyByRef(RefId, EProperty.Name, DeviceStatus.DeviceName);
 
                     var device = HS.GetDeviceWithFeaturesByRef(RefId);
+
+                    lwtDeviceRefId = CreateAndUpdateLWTFeature(device);
                     features = CreateAndUpdateFeatures(data, device).ToImmutableDictionary();
 
                     foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
@@ -307,54 +367,15 @@ namespace Hspi.DeviceData
                             break;
 
                         case ValueType.ValueType:
-                            try
-                            {
-                                var value = tasmotaStatus.GetFeatureValue<double>(feature.Key);
-                                HSDeviceHelper.UpdateDeviceValue(HS, feature.Value, value);
-                            }
-                            catch (Exception ex)
-                            {
-                                logger.Warn(Invariant($"Failed to get value from Device for {Name} : {feature.Key.Name} with {ex.GetFullMessage()}"));
-                                HSDeviceHelper.UpdateDeviceValue(HS, feature.Value, null);
-                            }
+                            UpdateDoubleValue(tasmotaStatus, feature);
                             break;
 
                         case ValueType.StringType:
-                            try
-                            {
-                                var value = tasmotaStatus.GetFeatureValue<string>(feature.Key);
-                                HS.UpdateFeatureValueStringByRef(feature.Value, value);
-                            }
-                            catch (Exception ex)
-                            {
-                                logger.Warn(Invariant($"Failed to get value from Device for {Name} : {feature.Key.Name} with {ex.GetFullMessage()}"));
-                                HS.UpdateFeatureValueStringByRef(feature.Value, null);
-                            }
+                            UpdateStringValue(tasmotaStatus, feature);
                             break;
 
                         case ValueType.OnOff:
-                            try
-                            {
-                                var value = tasmotaStatus.GetFeatureValue<string>(feature.Key);
-
-                                if (value == DeviceStatus.SwitchText["StateText2"])
-                                {
-                                    HSDeviceHelper.UpdateDeviceValue(HS, feature.Value, OnValue);
-                                }
-                                else if (value == DeviceStatus.SwitchText["StateText1"])
-                                {
-                                    HSDeviceHelper.UpdateDeviceValue(HS, feature.Value, OffValue);
-                                }
-                                else
-                                {
-                                    HSDeviceHelper.UpdateDeviceValue(HS, feature.Value, null);
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                logger.Warn(Invariant($"Failed to get value from Device for {Name} : {feature.Key.Name} with {ex.GetFullMessage()}"));
-                                HSDeviceHelper.UpdateDeviceValue(HS, feature.Value, null);
-                            }
+                            UpdateOnOffValue(tasmotaStatus, feature);
                             break;
                     }
                 }
@@ -370,18 +391,99 @@ namespace Hspi.DeviceData
             }
         }
 
+        private void UpdateDoubleValue(TasmotaStatus tasmotaStatus, KeyValuePair<TasmotaDeviceFeature, int> feature)
+        {
+            try
+            {
+                var value = tasmotaStatus.GetFeatureValue<double>(feature.Key);
+                HSDeviceHelper.UpdateDeviceValue(HS, feature.Value, value);
+            }
+            catch (Exception ex)
+            {
+                logger.Warn(Invariant($"Failed to get value from Device for {Name} : {feature.Key.Name} with {ex.GetFullMessage()}"));
+                HSDeviceHelper.UpdateDeviceValue(HS, feature.Value, null);
+            }
+        }
+
         private void UpdateFeature(TasmotaFullStatus deviceStatus, string sensorName)
         {
         }
 
+        private void UpdateLWTValue(string payload)
+        {
+            try
+            {
+                if (payload == LWTOnline)
+                {
+                    HSDeviceHelper.UpdateDeviceValue(HS, lwtDeviceRefId.Value, OnValue);
+                }
+                else if (payload == LWTOffline)
+                {
+                    HSDeviceHelper.UpdateDeviceValue(HS, lwtDeviceRefId.Value, OffValue);
+                }
+                else
+                {
+                    HSDeviceHelper.UpdateDeviceValue(HS, lwtDeviceRefId.Value, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Warn(Invariant($"Failed to get value from Device for {Name} : LWT with {ex.GetFullMessage()}"));
+                HSDeviceHelper.UpdateDeviceValue(HS, lwtDeviceRefId.Value, null);
+            }
+        }
+
+        private void UpdateOnOffValue(TasmotaStatus tasmotaStatus, KeyValuePair<TasmotaDeviceFeature, int> feature)
+        {
+            try
+            {
+                var value = tasmotaStatus.GetFeatureValue<string>(feature.Key);
+
+                if (value == DeviceStatus.SwitchText["StateText2"])
+                {
+                    HSDeviceHelper.UpdateDeviceValue(HS, feature.Value, OnValue);
+                }
+                else if (value == DeviceStatus.SwitchText["StateText1"])
+                {
+                    HSDeviceHelper.UpdateDeviceValue(HS, feature.Value, OffValue);
+                }
+                else
+                {
+                    HSDeviceHelper.UpdateDeviceValue(HS, feature.Value, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.Warn(Invariant($"Failed to get value from Device for {Name} : {feature.Key.Name} with {ex.GetFullMessage()}"));
+                HSDeviceHelper.UpdateDeviceValue(HS, feature.Value, null);
+            }
+        }
+
+        private void UpdateStringValue(TasmotaStatus tasmotaStatus, KeyValuePair<TasmotaDeviceFeature, int> feature)
+        {
+            try
+            {
+                var value = tasmotaStatus.GetFeatureValue<string>(feature.Key);
+                HS.UpdateFeatureValueStringByRef(feature.Value, value);
+            }
+            catch (Exception ex)
+            {
+                logger.Warn(Invariant($"Failed to get value from Device for {Name} : {feature.Key.Name} with {ex.GetFullMessage()}"));
+                HS.UpdateFeatureValueStringByRef(feature.Value, null);
+            }
+        }
+
+        private const string LWTDeviceType = "LWT";
+        private const string LWTOffline = "Offline";
+        private const string LWTOnline = "Online";
         private const double OffValue = 0;
         private const double OnValue = 1;
         private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
-
         private readonly CancellationToken cancellationToken;
         private readonly AsyncMonitor featureLock = new AsyncMonitor();
         private bool disposedValue;
         private ImmutableDictionary<TasmotaDeviceFeature, int> features;
+        private int? lwtDeviceRefId;
         private IManagedMqttClient mqttClient;
     }
 }
