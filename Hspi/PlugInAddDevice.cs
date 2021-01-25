@@ -89,10 +89,13 @@ namespace Hspi
                     var typeOptions = new List<string>();
                     var typeOptionKeys = new List<string>();
 
+                    var features = EnumHelper.GetValues<TasmotaDeviceFeature.FeatureDataType>()
+                                    .OrderBy<TasmotaDeviceFeature.FeatureDataType, string>((x) => x.ToString());
+
                     int selected = -1;
                     int i = 0;
                     int selectNone = -1;
-                    foreach (var value in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureDataType>())
+                    foreach (var value in features)
                     {
                         typeOptions.Add(EnumHelper.GetDescription(value));
                         typeOptionKeys.Add(value.ToString());
@@ -186,7 +189,10 @@ namespace Hspi
                     var featureNoDataType = feature.WithNewDataType(null);
                     newList.RemoveWhere(x => x.WithNewDataType(null) == featureNoDataType);
 
-                    var value = EnumHelper.GetValues<TasmotaDeviceFeature.FeatureDataType>().ToArray()[intValue];
+                    var featureDataTypes = EnumHelper.GetValues<TasmotaDeviceFeature.FeatureDataType>()
+                .                   OrderBy<TasmotaDeviceFeature.FeatureDataType, string>((x) => x.ToString()).ToArray();
+
+                    var value = featureDataTypes[intValue];
 
                     if (value != TasmotaDeviceFeature.FeatureDataType.None)
                     {
