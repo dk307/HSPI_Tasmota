@@ -7,16 +7,18 @@ using System.ComponentModel;
 
 namespace Hspi.DeviceData
 {
-    public readonly struct TasmotaDeviceFeature : IEquatable<TasmotaDeviceFeature>
+    [NullGuard(ValidationFlags.Arguments | ValidationFlags.NonPublic)]
+
+    public sealed class TasmotaDeviceFeature : IEquatable<TasmotaDeviceFeature>
     {
-        public TasmotaDeviceFeature(string id, string name, FeatureSource source, [AllowNull] FeatureDataType? dataType)
+        public TasmotaDeviceFeature(string id, string name, FeatureSource sourceType, [AllowNull] FeatureDataType? dataType)
         {
             Id = id;
             Name = name;
-            this.Source = source;
+            this.SourceType = sourceType;
             DataType = dataType;
             this.FullUniqueId = string.Join(".",
-                                            EnumHelper.GetDescription(Source),
+                                            EnumHelper.GetDescription(SourceType),
                                             Id,
                                             DataType != null ? EnumHelper.GetDescription(DataType) : string.Empty);
         }
@@ -117,7 +119,7 @@ namespace Hspi.DeviceData
         public string Id { get; }
         public string Name { get; }
 
-        public FeatureSource Source { get; }
+        public FeatureSource SourceType { get; }
 
         public static bool operator !=(TasmotaDeviceFeature left, TasmotaDeviceFeature right)
         {
@@ -154,7 +156,7 @@ namespace Hspi.DeviceData
 
         public TasmotaDeviceFeature WithNewDataType([AllowNull] FeatureDataType? dataType)
         {
-            return new TasmotaDeviceFeature(this.Id, this.Name, this.Source, dataType);
+            return new TasmotaDeviceFeature(this.Id, this.Name, this.SourceType, dataType);
         }
     };
 }

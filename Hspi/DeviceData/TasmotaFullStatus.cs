@@ -6,9 +6,6 @@ using System.Linq;
 
 namespace Hspi.DeviceData
 {
-     
-
-
     internal readonly struct MqttDetails
     {
         public MqttDetails(string host, int port)
@@ -41,6 +38,22 @@ namespace Hspi.DeviceData
             }
         }
 
+        public MqttDetails MqttServerDetails
+        {
+            get
+            {
+                // "MqttHost":"192.168.1.135","MqttPort":1883,"MqttClientMask":"DVES_%06X","MqttClient":"DVES_07E83D","MqttUser":"DVES_USER","MqttCount":1,"MAX_PACKET_SIZE":1200,"KEEPALIVE":30}}
+                var details = deviceStatus["StatusMQT"];
+
+                return new MqttDetails(details["MqttHost"].ToObject<string>(),
+                                       details["MqttPort"].ToObject<int>());
+            }
+        }
+
+        public ImmutableDictionary<string, string> MqttStatus { get; }
+
+        public ImmutableDictionary<string, string> SwitchText { get; }
+
         public IList<TasmotaDeviceFeature> GetPossibleFeatures()
         {
             var list = new List<TasmotaDeviceFeature>();
@@ -70,17 +83,9 @@ namespace Hspi.DeviceData
             }
         }
 
-        public T GetFeatureValue<T>(TasmotaDeviceFeature feature)
+        public TasmotaStatus GetStatus(TasmotaDeviceFeature.FeatureSource type)
         {
-            var child = GetObject(feature.Source) as JObject;
-
-            if (child != null)
-            {
-                var token = child.SelectToken(feature.Id);
-                return token.ToObject<T>();
-            }
-
-            throw new KeyNotFoundException();
+            return new TasmotaStatus(type, GetObject(type) as JObject);
         }
 
         private JToken GetObject(TasmotaDeviceFeature.FeatureSource type)
@@ -96,21 +101,6 @@ namespace Hspi.DeviceData
 
             return null;
         }
-
-        public MqttDetails MqttServerDetails
-        {
-            get
-            {
-                // "MqttHost":"192.168.1.135","MqttPort":1883,"MqttClientMask":"DVES_%06X","MqttClient":"DVES_07E83D","MqttUser":"DVES_USER","MqttCount":1,"MAX_PACKET_SIZE":1200,"KEEPALIVE":30}}
-                var details = deviceStatus["StatusMQT"];
-
-                return new MqttDetails(details["MqttHost"].ToObject<string>(),
-                                       details["MqttPort"].ToObject<int>());
-            }
-        }
-
-        public ImmutableDictionary<string, string> SwitchText { get; }
-        public ImmutableDictionary<string, string> MqttStatus { get; }
 
         private readonly JObject deviceStatus;
     }

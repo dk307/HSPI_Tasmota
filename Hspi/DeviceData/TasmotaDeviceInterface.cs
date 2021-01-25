@@ -26,7 +26,7 @@ namespace Hspi.DeviceData
             var prefixResult = await SendWebCommandToDeviceAsDict(data, "Prefix", cancellationToken).ConfigureAwait(false);
             var topicResult = await SendWebCommandToDeviceAsDict(data, "Topic", cancellationToken).ConfigureAwait(false);
 
-            string fullTopic = fullTopicResult["FullTopic"] + "+";
+            string fullTopic = fullTopicResult["FullTopic"];
             fullTopic = fullTopic.Replace("%topic%", topicResult["Topic"]);
 
             var topics = new Dictionary<string, string>();

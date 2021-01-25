@@ -60,7 +60,7 @@ namespace Hspi
                     var tasmotaStatus = tasmotaDevice.GetStatus().ResultForSync();
                     var possibleFeatures = tasmotaStatus.GetPossibleFeatures();
 
-                    var groups = possibleFeatures.GroupBy((x) => x.Source);
+                    var groups = possibleFeatures.GroupBy((x) => x.SourceType);
 
                     foreach (var group in groups)
                     {
