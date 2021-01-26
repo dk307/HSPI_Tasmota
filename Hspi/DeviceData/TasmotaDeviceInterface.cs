@@ -26,6 +26,11 @@ namespace Hspi.DeviceData
             await SendWebCommandToDevice(data, Invariant($"{command} {isOn}"), cancellationToken).ConfigureAwait(false);
         }
 
+        public static async Task ForceSendMQTTStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
+        {
+            await SendWebCommandToDevice(data, "Backlog TelePeriod; Delay 10; TelePeriod", cancellationToken).ConfigureAwait(false);
+        }
+
         private static async Task<IDictionary<string, string>> GetMqttTopics(TasmotaDeviceInfo data, CancellationToken cancellationToken)
         {
             var fullTopicResult = await SendWebCommandToDeviceAsDict(data, "FullTopic", cancellationToken).ConfigureAwait(false);

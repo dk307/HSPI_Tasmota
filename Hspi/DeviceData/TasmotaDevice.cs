@@ -85,6 +85,7 @@ namespace Hspi.DeviceData
             {
                 logger.Info(Invariant($"Turning {(on ? "ON" : "OFF")} {Name} : {feature.Key.Name}"));
                 await TasmotaDeviceInterface.SendOnOffCommand(Data, feature.Key.Name, on, cancellationToken).ConfigureAwait(false);
+                await TasmotaDeviceInterface.ForceSendMQTTStatus(Data, cancellationToken).ConfigureAwait(false);
             }
         }
 
