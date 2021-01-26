@@ -8,7 +8,6 @@ using System.ComponentModel;
 namespace Hspi.DeviceData
 {
     [NullGuard(ValidationFlags.Arguments | ValidationFlags.NonPublic)]
-
     public sealed class TasmotaDeviceFeature : IEquatable<TasmotaDeviceFeature>
     {
         public TasmotaDeviceFeature(string id, string name, FeatureSource sourceType, [AllowNull] FeatureDataType? dataType)
@@ -121,23 +120,23 @@ namespace Hspi.DeviceData
 
         public FeatureSource SourceType { get; }
 
-        public static bool operator !=(TasmotaDeviceFeature left, TasmotaDeviceFeature right)
+        public static bool operator !=([AllowNull] TasmotaDeviceFeature left, [AllowNull] TasmotaDeviceFeature right)
         {
             return !(left == right);
         }
 
-        public static bool operator ==(TasmotaDeviceFeature left, TasmotaDeviceFeature right)
+        public static bool operator ==([AllowNull] TasmotaDeviceFeature left, [AllowNull] TasmotaDeviceFeature right)
         {
             return left.Equals(right);
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals([AllowNull] object obj)
         {
             return obj is TasmotaDeviceFeature feature &&
                    FullUniqueId == feature.FullUniqueId;
         }
 
-        bool IEquatable<TasmotaDeviceFeature>.Equals(TasmotaDeviceFeature other)
+        bool IEquatable<TasmotaDeviceFeature>.Equals([AllowNull] TasmotaDeviceFeature other)
         {
             return this.Equals(other);
         }

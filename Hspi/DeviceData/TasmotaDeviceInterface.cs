@@ -13,11 +13,17 @@ namespace Hspi.DeviceData
     [NullGuard(ValidationFlags.Arguments | ValidationFlags.NonPublic)]
     internal static class TasmotaDeviceInterface
     {
-        public static async Task<TasmotaFullStatus> GetStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
+        public static async Task<TasmotaFullStatus> GetFullStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
         {
             return new TasmotaFullStatus(await SendWebCommandToDevice(data, "STATUS 0", cancellationToken).ConfigureAwait(false),
                                          await SendWebCommandToDeviceAsDict(data, "STATETEXT", cancellationToken).ConfigureAwait(false),
                                          await GetMqttTopics(data, cancellationToken).ConfigureAwait(false));
+        }
+
+        public static async Task SendOnOffCommand(TasmotaDeviceInfo data, string command, bool isOn,
+                                                  CancellationToken cancellationToken)
+        {
+            await SendWebCommandToDevice(data, Invariant($"{command} {isOn}"), cancellationToken).ConfigureAwait(false);
         }
 
         private static async Task<IDictionary<string, string>> GetMqttTopics(TasmotaDeviceInfo data, CancellationToken cancellationToken)

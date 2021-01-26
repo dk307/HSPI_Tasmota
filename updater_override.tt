@@ -15,7 +15,7 @@
     "Author": "dk307",
     "Price": "Free",
     "ReleaseNotesURL": "https://github.com/dk307/HSPI_Tasmota",
-    "ShortDescription": "Stores history of device values in InfluxDB",
+    "ShortDescription": "Integrate Tasmota devices with HS4",
     "SupportURL": "https://github.com/dk307/HSPI_Tasmota/issues",
     "Tags": [
       "Free",

@@ -1,10 +1,12 @@
 ﻿using HomeSeer.PluginSdk;
 using HomeSeer.PluginSdk.Devices;
+using HomeSeer.PluginSdk.Devices.Controls;
 using Hspi.DeviceData;
 using Hspi.Utils;
 using Nito.AsyncEx;
 using NullGuard;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using static System.FormattableString;
@@ -107,6 +109,28 @@ namespace Hspi
         {
             this.LogDebug = pluginConfig.DebugLogging;
             Logger.ConfigureLogging(LogDebug, pluginConfig.LogToFile, HomeSeerSystem);
+        }
+
+        public override void SetIOMulti(List<ControlEvent> colSends)
+        {
+            SetIOMultiAsync().ResultForSync();
+
+            async Task SetIOMultiAsync()
+            {
+                var devices = await GetTasmotaDevices().ConfigureAwait(false);
+                foreach (var colSend in colSends)
+                {
+                    foreach (var device in devices)
+                    {
+                        bool done = await device.Value.CanProcessCommand(colSend).ConfigureAwait(false);
+
+                        if (done)
+                        {
+                            return;
+                        }
+                    }
+                }
+            }
         }
 
         private readonly AsyncMonitor deviceManagerLock = new AsyncMonitor();
