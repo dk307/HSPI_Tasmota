@@ -200,6 +200,30 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Hspi\html\adddevice.html" />
+    <Content Include="Hspi\html\images\amperage.png" />
+    <Content Include="Hspi\html\images\apparentpower.png" />
+    <Content Include="Hspi\html\images\dewpoint.png" />
+    <Content Include="Hspi\html\images\energykwh.png" />
+    <Content Include="Hspi\html\images\genericdouble.png" />
+    <Content Include="Hspi\html\images\genericpercentage.png" />
+    <Content Include="Hspi\html\images\genericstring.png" />
+    <Content Include="Hspi\html\images\humidity.png" />
+    <Content Include="Hspi\html\images\icons.txt" />
+    <Content Include="Hspi\html\images\ipaddress.png" />
+    <Content Include="Hspi\html\images\off.png" />
+    <Content Include="Hspi\html\images\offline.png" />
+    <Content Include="Hspi\html\images\on.png" />
+    <Content Include="Hspi\html\images\online.png" />
+    <Content Include="Hspi\html\images\power.png" />
+    <Content Include="Hspi\html\images\reactivepower.png" />
+    <Content Include="Hspi\html\images\tasmota.png" />
+    <Content Include="Hspi\html\images\temperaturec.png" />
+    <Content Include="Hspi\html\images\temperaturef.png" />
+    <Content Include="Hspi\html\images\time.png" />
+    <Content Include="Hspi\html\images\uptime.png" />
+    <Content Include="Hspi\html\images\voltage.png" />
+    <Content Include="Hspi\html\images\wifi.png" />
     <Content Include="install.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -211,9 +235,7 @@
   <ItemGroup>
     <Reference Include="System" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Hspi\html\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <ArtifactsDirectory>$(OutputPath)\Artifacts</ArtifactsDirectory>

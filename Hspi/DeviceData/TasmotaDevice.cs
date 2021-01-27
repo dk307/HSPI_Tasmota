@@ -217,9 +217,10 @@ namespace Hspi.DeviceData
                 case TasmotaDeviceFeature.FeatureDataType.OnOffStateSensor:
                     {
                         var statusTexts = DeviceStatus.SwitchText;
-                        newFeatureData = FeatureFactory.CreateGenericBinarySensor(PlugInData.PlugInId, feature.Name,
-                                                                                  statusTexts.GetValueOrDefault("StateText2", "On"),
-                                                                                  statusTexts.GetValueOrDefault("StateText1", "Off"), OnValue, OffValue)
+                        newFeatureData = FeatureFactory.CreateFeature(PlugInData.PlugInId)
+                                                       .WithName(feature.Name)
+                                                       .AddGraphicForValue(CreateImagePath("on.png"), OnValue, statusTexts.GetValueOrDefault("StateText2", "On"))
+                                                       .AddGraphicForValue(CreateImagePath("off.png"), OffValue, statusTexts.GetValueOrDefault("StateText1", "Off"))
                                                        .WithMiscFlags(EMiscFlag.SetDoesNotChangeLastChange, EMiscFlag.StatusOnly);
                     }
                     break;
@@ -227,9 +228,14 @@ namespace Hspi.DeviceData
                 case TasmotaDeviceFeature.FeatureDataType.OnOffStateControl:
                     {
                         var statusTexts = DeviceStatus.SwitchText;
-                        newFeatureData = FeatureFactory.CreateGenericBinaryControl(PlugInData.PlugInId, feature.Name,
-                                                                                   statusTexts.GetValueOrDefault("StateText2", "On"),
-                                                                                   statusTexts.GetValueOrDefault("StateText1", "Off"), OnValue, OffValue)
+                        string onText = statusTexts.GetValueOrDefault("StateText2", "On");
+                        string offText = statusTexts.GetValueOrDefault("StateText1", "Off");
+                        newFeatureData = FeatureFactory.CreateFeature(PlugInData.PlugInId)
+                                                       .WithName(feature.Name)
+                                                       .AddGraphicForValue(CreateImagePath("on.png"), OnValue, onText)
+                                                       .AddGraphicForValue(CreateImagePath("off.png"), OffValue, offText)
+                                                       .AddButton(OnValue, onText, controlUse: EControlUse.On)
+                                                       .AddButton(OffValue, offText, controlUse: EControlUse.Off)
                                                        .WithMiscFlags(EMiscFlag.SetDoesNotChangeLastChange);
                     }
                     break;
@@ -312,23 +318,27 @@ namespace Hspi.DeviceData
 
             try
             {
-                string payload = Encoding.UTF8.GetString(message.Payload);
-                using (var _ = await featureLock.EnterAsync(cancellationToken).ConfigureAwait(false))
+                byte[] payloadBytes = message.Payload;
+                if (payloadBytes != null && payloadBytes.Length > 0)
                 {
-                    var mqttTopicPrefix = MqttTopicPrefix;
+                    string payload = Encoding.UTF8.GetString(payloadBytes);
+                    using (var _ = await featureLock.EnterAsync(cancellationToken).ConfigureAwait(false))
+                    {
+                        var mqttTopicPrefix = MqttTopicPrefix;
 
-                    if ((mqttTopicPrefix + "LWT") == topic)
-                    {
-                        UpdateLWTValue(payload);
-                    }
-                    else
-                    {
-                        foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
+                        if ((mqttTopicPrefix + "LWT") == topic)
                         {
-                            var sourceMQTTTopic = mqttTopicPrefix + sourceType.ToString().ToUpperInvariant();
-                            if (topic == sourceMQTTTopic)
+                            UpdateLWTValue(payload);
+                        }
+                        else
+                        {
+                            foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
                             {
-                                UpdateDevicesValues(new TasmotaStatus(sourceType, JObject.Parse(payload)));
+                                var sourceMQTTTopic = mqttTopicPrefix + sourceType.ToString().ToUpperInvariant();
+                                if (topic == sourceMQTTTopic)
+                                {
+                                    UpdateDevicesValues(new TasmotaStatus(sourceType, JObject.Parse(payload)));
+                                }
                             }
                         }
                     }
