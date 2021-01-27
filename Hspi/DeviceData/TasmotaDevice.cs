@@ -265,7 +265,7 @@ namespace Hspi.DeviceData
         {
             var newFeatureData = FeatureFactory.CreateFeature(PlugInData.PlugInId)
                                .WithName("Device MQTT Status")
-                               .WithMiscFlags(EMiscFlag.SetDoesNotChangeLastChange, EMiscFlag.StatusOnly)
+                               .WithMiscFlags(EMiscFlag.StatusOnly)
                                .WithLocation(PlugInData.PlugInName)
                                .AsType(EFeatureType.Generic, 0)
                                .WithExtraData(HSDeviceHelper.CreatePlugInExtraDataForDeviceType(LWTDeviceType))
@@ -297,9 +297,10 @@ namespace Hspi.DeviceData
                 var topicFiltersBuilder3 = new MqttTopicFilterBuilder()
                                               .WithTopic(MqttTopicPrefix + "+");
 
-                mqttClient.UseApplicationMessageReceivedHandler(async e =>
+                mqttClient.UseApplicationMessageReceivedHandler(e =>
                 {
-                    await ProcessMQTTMessage(e.ApplicationMessage).ConfigureAwait(false);
+                    ProcessMQTTMessage(e.ApplicationMessage).ResultForSync();
+                    e.ProcessingFailed = false;
                 });
                 await mqttClient.SubscribeAsync(topicFiltersBuilder3.Build()).ConfigureAwait(false);
 
@@ -461,6 +462,7 @@ namespace Hspi.DeviceData
                 }
                 else if (payload == LWTOffline)
                 {
+                    logger.Warn(Invariant($"{Name} is offline"));
                     HSDeviceHelper.UpdateDeviceValue(HS, lwtDeviceRefId.Value, OffValue);
                 }
                 else

@@ -8,6 +8,7 @@
         private static void Main(string[] args)
         {
             Logger.ConfigureLogging(false, false);
+            DeviceData.MqttHelper.SetLogging();
             logger.Info("Starting...");
 
             try
