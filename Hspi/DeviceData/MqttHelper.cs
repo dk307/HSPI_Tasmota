@@ -19,7 +19,7 @@ namespace Hspi.DeviceData
                         break;
 
                     case MqttNetLogLevel.Info:
-                        logEventInfo.Level = LogLevel.Info;
+                        logEventInfo.Level = LogLevel.Debug;
                         break;
 
                     case MqttNetLogLevel.Warning:

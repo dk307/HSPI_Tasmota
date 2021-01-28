@@ -26,7 +26,7 @@ namespace Hspi.DeviceData
                 }
             }
 
-            throw new KeyNotFoundException();
+            throw new KeyNotFoundException(feature.Id);
         }
 
         private readonly JObject source;

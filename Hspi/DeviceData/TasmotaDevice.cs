@@ -385,7 +385,7 @@ namespace Hspi.DeviceData
                     throw;
                 }
 
-                logger.Warn(Invariant($"Failed to connect to device with {ExceptionHelper.GetFullMessage(ex)} for {Name}"));
+                logger.Warn(Invariant($"Failed to connect to device with {ExceptionHelper.GetFullMessage(ex)} for {Name}. Retrying again in 15s..."));
 
                 await Task.Delay(15000, cancellationToken).ConfigureAwait(false);
             }
