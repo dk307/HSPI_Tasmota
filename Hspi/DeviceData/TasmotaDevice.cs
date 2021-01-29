@@ -294,6 +294,10 @@ namespace Hspi.DeviceData
 
                 mqttClient = new MqttFactory().CreateManagedMqttClient();
 
+                var topicFiltersBuilderLWT = new MqttTopicFilterBuilder()
+                                              .WithTopic(MqttTopicPrefix + "LWT")
+                                              .WithAtLeastOnceQoS();
+
                 var topicFiltersBuilder3 = new MqttTopicFilterBuilder()
                                               .WithTopic(MqttTopicPrefix + "+");
 
@@ -302,7 +306,7 @@ namespace Hspi.DeviceData
                     ProcessMQTTMessage(e.ApplicationMessage).ResultForSync();
                     e.ProcessingFailed = false;
                 });
-                await mqttClient.SubscribeAsync(topicFiltersBuilder3.Build()).ConfigureAwait(false);
+                await mqttClient.SubscribeAsync(topicFiltersBuilderLWT.Build(), topicFiltersBuilder3.Build()).ConfigureAwait(false);
 
                 cancellationToken.Register(() => mqttClient.StopAsync());
                 await mqttClient.StartAsync(options).ConfigureAwait(false);

@@ -120,16 +120,6 @@ namespace Hspi.DeviceData
 
         public FeatureSource SourceType { get; }
 
-        public static bool operator !=([AllowNull] TasmotaDeviceFeature left, [AllowNull] TasmotaDeviceFeature right)
-        {
-            return !(left == right);
-        }
-
-        public static bool operator ==([AllowNull] TasmotaDeviceFeature left, [AllowNull] TasmotaDeviceFeature right)
-        {
-            return left.Equals(right);
-        }
-
         public override bool Equals([AllowNull] object obj)
         {
             return obj is TasmotaDeviceFeature feature &&

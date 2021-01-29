@@ -30,14 +30,13 @@ namespace Hspi.DeviceData
             MqttStatus = mqttStatus.ToImmutableDictionary();
         }
 
-        public string DeviceName
-        {
-            get
-            {
-                return deviceStatus["Status"]["DeviceName"].ToString();
-            }
-        }
-
+        public string DeviceName => deviceStatus["Status"]["DeviceName"].ToString();
+        public string Version => deviceStatus["StatusFWR"]["Version"].ToString();
+        public string BuildDateTime => deviceStatus["StatusFWR"]["BuildDateTime"].ToString();
+        public string RestartReason => deviceStatus["StatusPRM"]["RestartReason"].ToString();
+        public string Uptime => deviceStatus["StatusPRM"]["Uptime"].ToString();
+        public string BootCount => deviceStatus["StatusPRM"]["BootCount"].ToString();
+ 
         public MqttDetails MqttServerDetails
         {
             get

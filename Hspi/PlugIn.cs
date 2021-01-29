@@ -8,6 +8,7 @@ using NullGuard;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Threading.Tasks;
 using static System.FormattableString;
 
@@ -61,8 +62,14 @@ namespace Hspi
 
                 logger.Info("Starting Plugin");
 
+                HomeSeerSystem.RegisterEventCB(Constants.HSEvent.CONFIG_CHANGE, PlugInData.PlugInId);
+
                 // Device Add Page
                 HomeSeerSystem.RegisterDeviceIncPage(Id, "adddevice.html", "Add Tasmota Device");
+
+                // Feature pages
+                HomeSeerSystem.RegisterFeaturePage(Id, "configuration.html", "Configuration");
+                HomeSeerSystem.RegisterFeaturePage(Id, "devicelist.html", "Devices");
 
                 RestartProcessing();
 
@@ -74,6 +81,33 @@ namespace Hspi
                 logger.Error(result);
                 throw;
             }
+        }
+
+        public override void HsEvent(Constants.HSEvent eventType, object[] parameters)
+        {
+            if (eventType == Constants.HSEvent.CONFIG_CHANGE)
+            {
+                if (parameters.Length == 6)
+                {
+                    if (Convert.ToInt32(parameters[1], CultureInfo.InvariantCulture) == 0) // Device Type change
+                    {
+                        if (Convert.ToInt32(parameters[4], CultureInfo.InvariantCulture) == 2) //Delete
+                        {
+                            int deletedDeviceRefId = Convert.ToInt32(parameters[3], CultureInfo.InvariantCulture);
+
+                            var devices = GetTasmotaDevices().ResultForSync();
+
+                            if (devices.ContainsKey(deletedDeviceRefId))
+                            {
+                                logger.Info($"PlugIn Device refId {deletedDeviceRefId} deleted");
+                                RestartProcessing();
+                            }
+                        }
+                    }
+                }
+            }
+
+            base.HsEvent(eventType, parameters);
         }
 
         private void RestartProcessing()
