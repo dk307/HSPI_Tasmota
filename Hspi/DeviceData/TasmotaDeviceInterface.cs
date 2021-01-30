@@ -10,8 +10,7 @@ using static System.FormattableString;
 
 namespace Hspi.DeviceData
 {
-    [NullGuard(ValidationFlags.Arguments | ValidationFlags.NonPublic)]
-    internal static class TasmotaDeviceInterface
+     internal static class TasmotaDeviceInterface
     {
         public static async Task<TasmotaFullStatus> GetFullStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
         {

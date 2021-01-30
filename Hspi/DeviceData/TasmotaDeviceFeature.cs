@@ -1,16 +1,13 @@
 ﻿using Hspi.Utils;
 using Newtonsoft.Json;
 using NullGuard;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 
 namespace Hspi.DeviceData
 {
-    [NullGuard(ValidationFlags.Arguments | ValidationFlags.NonPublic)]
-    public sealed class TasmotaDeviceFeature : IEquatable<TasmotaDeviceFeature>
+    public sealed record TasmotaDeviceFeature
     {
-        public TasmotaDeviceFeature(string id, string name, FeatureSource sourceType, [AllowNull] FeatureDataType? dataType)
+        public TasmotaDeviceFeature(string id, string name, FeatureSource sourceType, FeatureDataType? dataType)
         {
             Id = id;
             Name = name;
@@ -120,30 +117,7 @@ namespace Hspi.DeviceData
 
         public FeatureSource SourceType { get; }
 
-        public override bool Equals([AllowNull] object obj)
-        {
-            return obj is TasmotaDeviceFeature feature &&
-                   FullUniqueId == feature.FullUniqueId;
-        }
-
-        bool IEquatable<TasmotaDeviceFeature>.Equals([AllowNull] TasmotaDeviceFeature other)
-        {
-            return this.Equals(other);
-        }
-
-        public override int GetHashCode()
-        {
-            int hashCode = -678952093;
-            hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(FullUniqueId);
-            return hashCode;
-        }
-
-        public override string ToString()
-        {
-            return FullUniqueId;
-        }
-
-        public TasmotaDeviceFeature WithNewDataType([AllowNull] FeatureDataType? dataType)
+        public TasmotaDeviceFeature WithNewDataType(FeatureDataType? dataType)
         {
             return new TasmotaDeviceFeature(this.Id, this.Name, this.SourceType, dataType);
         }

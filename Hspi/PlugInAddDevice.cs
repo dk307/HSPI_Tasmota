@@ -8,6 +8,8 @@ using System.Globalization;
 using System.Linq;
 using static System.FormattableString;
 
+#nullable enable
+
 namespace Hspi
 {
     internal partial class PlugIn : HspiBase
@@ -37,7 +39,10 @@ namespace Hspi
             }
 
             var data = new Dictionary<string, object>();
-            data.Add("refId", refId);
+            if (refId.HasValue)
+            {
+                data.Add("refId", refId);
+            }
             data.Add("error", errors);
 
             return data;
@@ -51,9 +56,9 @@ namespace Hspi
             if (tasmotaDevices.TryGetValue(deviceRef, out var tasmotaDevice))
             {
                 var data = tasmotaDevice.Data;
-                page = page.WithInput(nameof(TasmotaDeviceInfo.Uri), "Http url of the device", data.Uri.ToString(), HomeSeer.Jui.Types.EInputType.Url)
-                           .WithInput(nameof(TasmotaDeviceInfo.User), "User", data.User, HomeSeer.Jui.Types.EInputType.Text)
-                           .WithInput(nameof(TasmotaDeviceInfo.Password), "Password", data.Password, HomeSeer.Jui.Types.EInputType.Password);
+                page = page.WithInput(nameof(TasmotaDeviceInfo.Uri), "Http url of the device", data?.Uri?.ToString() ?? string.Empty, HomeSeer.Jui.Types.EInputType.Url)
+                           .WithInput(nameof(TasmotaDeviceInfo.User), "User", data?.User ?? string.Empty, HomeSeer.Jui.Types.EInputType.Text)
+                           .WithInput(nameof(TasmotaDeviceInfo.Password), "Password", data?.Password ?? string.Empty, HomeSeer.Jui.Types.EInputType.Password);
 
                 try
                 {
@@ -64,7 +69,7 @@ namespace Hspi
 
                     foreach (var group in groups)
                     {
-                        AddFeatureEnabledOptions(EnumHelper.GetDescription(group.Key), group, data.EnabledFeatures);
+                        AddFeatureEnabledOptions(EnumHelper.GetDescription(group.Key), group, data?.EnabledFeatures ?? ImmutableHashSet<TasmotaDeviceFeature>.Empty);
                     }
                 }
                 catch (Exception ex)
@@ -139,7 +144,7 @@ namespace Hspi
 
                     //update the host/user/password first
                     var data = tasmotaDevice.Data;
-                    data = data.CreateNew(changes, data.EnabledFeatures);
+                    data = TasmotaDeviceInfo.CreateNew(data, changes, data?.EnabledFeatures);
                     tasmotaDevice.Data = data;
 
                     // update enabled features later
@@ -152,7 +157,7 @@ namespace Hspi
                         CheckValue(changes, newList, feature);
                     }
 
-                    tasmotaDevice.Data = data.CreateNew(null, newList);
+                    tasmotaDevice.Data = TasmotaDeviceInfo.CreateNew(data, null, newList);
 
                     return true;
                 }
@@ -190,7 +195,7 @@ namespace Hspi
                     newList.RemoveWhere(x => x.WithNewDataType(null) == featureNoDataType);
 
                     var featureDataTypes = EnumHelper.GetValues<TasmotaDeviceFeature.FeatureDataType>()
-                .                   OrderBy<TasmotaDeviceFeature.FeatureDataType, string>((x) => x.ToString()).ToArray();
+                .OrderBy<TasmotaDeviceFeature.FeatureDataType, string>((x) => x.ToString()).ToArray();
 
                     var value = featureDataTypes[intValue];
 

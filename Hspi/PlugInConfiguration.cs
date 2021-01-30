@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
+#nullable enable
+
 namespace Hspi
 {
     internal partial class PlugIn : HspiBase
@@ -14,8 +16,8 @@ namespace Hspi
         public IDictionary<string, object> GetGeneralInformation()
         {
             var configuration = new Dictionary<string, object>();
-            configuration[DebugLoggingConfiguration] = pluginConfig.DebugLogging;
-            configuration[LogToFileConfiguration] = pluginConfig.LogToFile;
+            configuration[DebugLoggingConfiguration] = pluginConfig!.DebugLogging;
+            configuration[LogToFileConfiguration] = pluginConfig!.LogToFile;
             return configuration;
         }
 
@@ -24,8 +26,8 @@ namespace Hspi
             var errors = new List<string>();
             try
             {
-                pluginConfig.DebugLogging = CheckBoolValue(DebugLoggingConfiguration);
-                pluginConfig.LogToFile = CheckBoolValue(LogToFileConfiguration);
+                pluginConfig!.DebugLogging = CheckBoolValue(DebugLoggingConfiguration);
+                pluginConfig!.LogToFile = CheckBoolValue(LogToFileConfiguration);
                 PluginConfigChanged();
             }
             catch (Exception ex)
@@ -63,17 +65,17 @@ namespace Hspi
                     data.Add("refId", pair.Key);
 
                     var tasmotaData = pair.Value.Data;
-                    data.Add("uri", tasmotaData.Uri);
+                    data.Add("uri", tasmotaData?.Uri?.ToString() ?? string.Empty);
 
                     try
                     {
                         var status = await statusMap[pair.Key].ConfigureAwait(false);
 
-                        data.Add("Version", status.Version);
-                        data.Add("BuildDateTime", status.BuildDateTime);
-                        data.Add("BootCount", status.BootCount);
-                        data.Add("UpTime", status.Uptime);
-                        data.Add("RestartReason", status.RestartReason);
+                        data.Add("Version", status.Version ?? string.Empty);
+                        data.Add("BuildDateTime", status.BuildDateTime ?? string.Empty);
+                        data.Add("BootCount", status.BootCount ?? string.Empty);
+                        data.Add("UpTime", status.Uptime ?? string.Empty);
+                        data.Add("RestartReason", status.RestartReason ?? string.Empty);
                     }
                     catch { }
 

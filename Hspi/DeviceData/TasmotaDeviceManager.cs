@@ -9,10 +9,11 @@ using System.Collections.Immutable;
 using System.Threading;
 using static System.FormattableString;
 
+#nullable enable
+
 namespace Hspi.DeviceData
 {
-    [NullGuard(ValidationFlags.Arguments | ValidationFlags.NonPublic)]
-    internal sealed class TasmotaDeviceManager : IDisposable
+     internal sealed class TasmotaDeviceManager : IDisposable
     {
         public TasmotaDeviceManager(IHsController HS,
                                     CancellationToken cancellationToken)
@@ -51,7 +52,7 @@ namespace Hspi.DeviceData
                     //data is stored in feature(child)
                     if (relationship == ERelationship.Device)
                     {
-                        string deviceType = HSDeviceHelper.GetDeviceTypeFromPlugInData(HS, refId);
+                        var deviceType = HSDeviceHelper.GetDeviceTypeFromPlugInData(HS, refId);
 
                         if (deviceType == TasmotaDevice.RootDeviceType)
                         {

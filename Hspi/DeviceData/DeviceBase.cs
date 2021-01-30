@@ -1,6 +1,10 @@
 ﻿using HomeSeer.PluginSdk;
 using HomeSeer.PluginSdk.Devices;
 using Newtonsoft.Json;
+using System.Diagnostics.CodeAnalysis;
+using static System.FormattableString;
+
+#nullable enable
 
 namespace Hspi.DeviceData
 {
@@ -14,19 +18,34 @@ namespace Hspi.DeviceData
 
         public abstract string DeviceType { get; }
 
-        public T Data
+        [DisallowNull]
+        public T? Data
         {
             get
             {
                 var plugInExtra = HS.GetPropertyByRef(RefId, EProperty.PlugExtraData) as PlugExtraData;
                 var stringData = plugInExtra?[PlugInData.DevicePlugInDataNamedKey];
-                return JsonConvert.DeserializeObject<T>(stringData);
+                if (stringData != null)
+                {
+                    return JsonConvert.DeserializeObject<T>(stringData);
+                }
+                return null;
             }
 
             set
             {
                 UpdateDevice(value);
             }
+        }
+
+        public T GetValidatedData()
+        {
+            var data = Data;
+            if (data == null)
+            {
+                throw new System.Exception(Invariant($"Plugin Data is not valid for {Name}"));
+            }
+            return data;
         }
 
         public string Name => HSDeviceHelper.GetName(HS, RefId);

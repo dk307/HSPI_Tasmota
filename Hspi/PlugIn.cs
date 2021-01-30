@@ -3,8 +3,8 @@ using HomeSeer.PluginSdk.Devices;
 using HomeSeer.PluginSdk.Devices.Controls;
 using Hspi.DeviceData;
 using Hspi.Utils;
+using MQTTnet.Server;
 using Nito.AsyncEx;
-using NullGuard;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -12,75 +12,15 @@ using System.Globalization;
 using System.Threading.Tasks;
 using static System.FormattableString;
 
+#nullable enable
+
 namespace Hspi
 {
-    [NullGuard(ValidationFlags.Arguments | ValidationFlags.NonPublic)]
     internal partial class PlugIn : HspiBase
     {
         public PlugIn()
             : base(PlugInData.PlugInId, PlugInData.PlugInName)
         {
-        }
-
-        public override EPollResponse UpdateStatusNow(int devOrFeatRef)
-        {
-            try
-            {
-                // bool result = ImportDeviceFromDB(devOrFeatRef).ResultForSync();
-                // return result ? EPollResponse.NotFound : EPollResponse.Ok;
-                return EPollResponse.Ok;
-            }
-            catch (Exception ex)
-            {
-                logger.Error(Invariant($"Failed to import value for Ref Id: {devOrFeatRef} with {ex.GetFullMessage()}"));
-                return EPollResponse.ErrorGettingStatus;
-            }
-        }
-
-        protected override void BeforeReturnStatus()
-        {
-            this.Status = PluginStatus.Ok();
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                disposedValue = true;
-            }
-
-            base.Dispose(disposing);
-        }
-
-        protected override void Initialize()
-        {
-            string result = string.Empty;
-            try
-            {
-                pluginConfig = new PluginConfig(HomeSeerSystem);
-                UpdateDebugLevel();
-
-                logger.Info("Starting Plugin");
-
-                HomeSeerSystem.RegisterEventCB(Constants.HSEvent.CONFIG_CHANGE, PlugInData.PlugInId);
-
-                // Device Add Page
-                HomeSeerSystem.RegisterDeviceIncPage(Id, "adddevice.html", "Add Tasmota Device");
-
-                // Feature pages
-                HomeSeerSystem.RegisterFeaturePage(Id, "configuration.html", "Configuration");
-                HomeSeerSystem.RegisterFeaturePage(Id, "devicelist.html", "Devices");
-
-                RestartProcessing();
-
-                logger.Info("Plugin Started");
-            }
-            catch (Exception ex)
-            {
-                result = Invariant($"Failed to initialize PlugIn with {ex.GetFullMessage()}");
-                logger.Error(result);
-                throw;
-            }
         }
 
         public override void HsEvent(Constants.HSEvent eventType, object[] parameters)
@@ -110,41 +50,6 @@ namespace Hspi
             base.HsEvent(eventType, parameters);
         }
 
-        private void RestartProcessing()
-        {
-            Utils.TaskHelper.StartAsyncWithErrorChecking("Device Start", StartDevices, ShutdownCancellationToken);
-        }
-
-        private async Task StartDevices()
-        {
-            using (var sync = await deviceManagerLock.EnterAsync(ShutdownCancellationToken))
-            {
-                tasmotaDeviceManager?.Dispose();
-                tasmotaDeviceManager = new TasmotaDeviceManager(HomeSeerSystem,
-                                                                ShutdownCancellationToken);
-            }
-        }
-
-        private async Task<ImmutableDictionary<int, TasmotaDevice>> GetTasmotaDevices()
-        {
-            using (var sync = await deviceManagerLock.EnterAsync(ShutdownCancellationToken))
-            {
-                return tasmotaDeviceManager?.ImportDevices ?? ImmutableDictionary<int, TasmotaDevice>.Empty;
-            }
-        }
-
-        private void PluginConfigChanged()
-        {
-            UpdateDebugLevel();
-            RestartProcessing();
-        }
-
-        private void UpdateDebugLevel()
-        {
-            this.LogDebug = pluginConfig.DebugLogging;
-            Logger.ConfigureLogging(LogDebug, pluginConfig.LogToFile, HomeSeerSystem);
-        }
-
         public override void SetIOMulti(List<ControlEvent> colSends)
         {
             SetIOMultiAsync().ResultForSync();
@@ -167,11 +72,106 @@ namespace Hspi
             }
         }
 
-        private readonly AsyncMonitor deviceManagerLock = new AsyncMonitor();
-        private TasmotaDeviceManager tasmotaDeviceManager;
+        public override EPollResponse UpdateStatusNow(int devOrFeatRef)
+        {
+            try
+            {
+                // bool result = ImportDeviceFromDB(devOrFeatRef).ResultForSync();
+                // return result ? EPollResponse.NotFound : EPollResponse.Ok;
+                return EPollResponse.Ok;
+            }
+            catch (Exception ex)
+            {
+                logger.Error(Invariant($"Failed to import value for Ref Id: {devOrFeatRef} with {ex.GetFullMessage()}"));
+                return EPollResponse.ErrorGettingStatus;
+            }
+        }
 
-        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
-        private bool disposedValue;
-        private PluginConfig pluginConfig;
+        protected override void BeforeReturnStatus()
+        {
+            this.Status = PluginStatus.Ok();
+        }
+
+ 
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                tasmotaDeviceManager?.Dispose();
+                mqttServer?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        protected override void Initialize()
+        {
+            string result = string.Empty;
+            try
+            {
+                pluginConfig = new PluginConfig(HomeSeerSystem);
+                UpdateDebugLevel();
+
+                logger.Info("Starting Plugin");
+
+                  mqttServer = MqttHelper.StartServer(ShutdownCancellationToken).ResultForSync();
+
+                HomeSeerSystem.RegisterEventCB(Constants.HSEvent.CONFIG_CHANGE, PlugInData.PlugInId);
+
+                // Device Add Page
+                HomeSeerSystem.RegisterDeviceIncPage(Id, "adddevice.html", "Add Tasmota Device");
+
+                // Feature pages
+                HomeSeerSystem.RegisterFeaturePage(Id, "configuration.html", "Configuration");
+                HomeSeerSystem.RegisterFeaturePage(Id, "devicelist.html", "Devices");
+
+                RestartProcessing();
+
+                logger.Info("Plugin Started");
+            }
+            catch (Exception ex)
+            {
+                result = Invariant($"Failed to initialize PlugIn with {ex.GetFullMessage()}");
+                logger.Error(result);
+                throw;
+            }
+        }
+        private async Task<ImmutableDictionary<int, TasmotaDevice>> GetTasmotaDevices()
+        {
+            using (var sync = await deviceManagerLock.EnterAsync(ShutdownCancellationToken))
+            {
+                return tasmotaDeviceManager?.ImportDevices ?? ImmutableDictionary<int, TasmotaDevice>.Empty;
+            }
+        }
+
+        private void PluginConfigChanged()
+        {
+            UpdateDebugLevel();
+            RestartProcessing();
+        }
+
+        private void RestartProcessing()
+        {
+            Utils.TaskHelper.StartAsyncWithErrorChecking("Device Start", StartDevices, ShutdownCancellationToken);
+        }
+
+        private async Task StartDevices()
+        {
+            using (var sync = await deviceManagerLock.EnterAsync(ShutdownCancellationToken))
+            {
+                tasmotaDeviceManager?.Dispose();
+                tasmotaDeviceManager = new TasmotaDeviceManager(HomeSeerSystem,
+                                                                ShutdownCancellationToken);
+            }
+        }
+        private void UpdateDebugLevel()
+        {
+            this.LogDebug = pluginConfig!.DebugLogging;
+            Logger.ConfigureLogging(LogDebug, pluginConfig.LogToFile, HomeSeerSystem);
+        }
+        private readonly static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+        private readonly AsyncMonitor deviceManagerLock = new AsyncMonitor();
+        private PluginConfig? pluginConfig;
+        private TasmotaDeviceManager? tasmotaDeviceManager;
+        private IMqttServer? mqttServer;
     }
 }

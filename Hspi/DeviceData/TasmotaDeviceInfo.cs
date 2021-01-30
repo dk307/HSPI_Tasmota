@@ -1,17 +1,17 @@
-﻿using NullGuard;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
+#nullable enable
+
 namespace Hspi.DeviceData
 {
-    [NullGuard(ValidationFlags.Arguments | ValidationFlags.NonPublic)]
-    internal sealed partial class TasmotaDeviceInfo
+    internal sealed record TasmotaDeviceInfo
     {
         public TasmotaDeviceInfo(Uri uri,
-                                [AllowNull] string user,
-                                [AllowNull] string password,
-                                [AllowNull] IEnumerable<TasmotaDeviceFeature> enabledFeatures)
+                                 string? user,
+                                 string? password,
+                                 IEnumerable<TasmotaDeviceFeature>? enabledFeatures)
         {
             Uri = uri;
             User = user;
@@ -20,20 +20,21 @@ namespace Hspi.DeviceData
         }
 
         public ImmutableHashSet<TasmotaDeviceFeature> EnabledFeatures { get; }
-        public string Password { get; }
+        public string? Password { get; }
         public Uri Uri { get; }
-        public string User { get; }
+        public string? User { get; }
 
 #pragma warning disable CA1822 // Mark members as static
         public int Version => 1;
 #pragma warning restore CA1822 // Mark members as static
 
-        public TasmotaDeviceInfo CreateNew([AllowNull] IDictionary<string, string> changes,
-                                           [AllowNull] IEnumerable<TasmotaDeviceFeature> enabledFeatures)
+        public static TasmotaDeviceInfo CreateNew(TasmotaDeviceInfo? existing,
+                                                   IDictionary<string, string>? changes,
+                                                   IEnumerable<TasmotaDeviceFeature>? enabledFeatures)
         {
-            string user = null;
-            string password = null;
-            string uri = null;
+            string? user = null;
+            string? password = null;
+            string? uri = null;
 
             if (changes != null)
             {
@@ -42,9 +43,9 @@ namespace Hspi.DeviceData
                 changes.TryGetValue(nameof(Uri), out uri);
             }
 
-            return new TasmotaDeviceInfo(uri != null ? new Uri(uri) : Uri,
-                                         user ?? User,
-                                         password ?? Password,
+            return new TasmotaDeviceInfo(uri != null ? new Uri(uri) : throw new Exception("uri not valid"),
+                                         user ?? existing?.User,
+                                         password ?? existing?.Password,
                                          enabledFeatures);
         }
     }

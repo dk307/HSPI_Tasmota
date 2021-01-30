@@ -8,10 +8,10 @@ using MQTTnet.Client.Options;
 using MQTTnet.Extensions.ManagedClient;
 using Newtonsoft.Json.Linq;
 using Nito.AsyncEx;
-using NullGuard;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -19,12 +19,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using static System.FormattableString;
 
+#nullable enable
+
 namespace Hspi.DeviceData
 {
-    [NullGuard(ValidationFlags.Arguments | ValidationFlags.NonPublic)]
     internal class TasmotaDevice : DeviceBase<TasmotaDeviceInfo>, IDisposable
     {
-        public TasmotaDevice(IHsController HS, int refId, CancellationToken cancellationToken) : base(HS, refId)
+        public TasmotaDevice(IHsController HS, int refId, CancellationToken cancellationToken)
+            : base(HS, refId)
         {
             this.cancellationToken = cancellationToken;
             Utils.TaskHelper.StartAsyncWithErrorChecking("Device Start", UpdateDeviceProperties, cancellationToken);
@@ -33,8 +35,22 @@ namespace Hspi.DeviceData
         public static string RootDeviceType => "tasmota-root";
 
         public override string DeviceType => RootDeviceType;
-        private TasmotaFullStatus DeviceStatus { get; set; }
-        private string MqttTopicPrefix => DeviceStatus.MqttStatus["Prefix3"];
+
+        private TasmotaFullStatus DeviceStatus
+        {
+            get
+            {
+                if (deviceStatus == null)
+                {
+                    throw new Exception($"No status avaiable for {Name}");
+                }
+                return deviceStatus;
+            }
+
+            set => deviceStatus = value;
+        }
+
+        private string? MqttTopicPrefix => DeviceStatus.MqttStatus?["Prefix3"];
 
         public static async Task<int> CreateNew(IHsController HS,
                                                     TasmotaDeviceInfo data,
@@ -43,7 +59,7 @@ namespace Hspi.DeviceData
             var deviceStatus = await TasmotaDeviceInterface.GetFullStatus(data, cancellationToken).ConfigureAwait(false);
 
             PlugExtraData extraData = CreatePlugInExtraData(data, RootDeviceType);
-            string friendlyName = deviceStatus.DeviceName;
+            string friendlyName = deviceStatus.DeviceName ?? "Tasmota Device";
             var newDeviceData = DeviceFactory.CreateDevice(PlugInData.PlugInId)
                          .WithName(friendlyName)
                          .AsType(EDeviceType.Generic, 0)
@@ -84,8 +100,9 @@ namespace Hspi.DeviceData
             async Task SendCommand(KeyValuePair<TasmotaDeviceFeature, int> feature, bool on)
             {
                 logger.Info(Invariant($"Turning {(on ? "ON" : "OFF")} {Name} : {feature.Key.Name}"));
-                await TasmotaDeviceInterface.SendOnOffCommand(Data, feature.Key.Name, on, cancellationToken).ConfigureAwait(false);
-                await TasmotaDeviceInterface.ForceSendMQTTStatus(Data, cancellationToken).ConfigureAwait(false);
+                var data = GetValidatedData();
+                await TasmotaDeviceInterface.SendOnOffCommand(data, feature.Key.Name, on, cancellationToken).ConfigureAwait(false);
+                await TasmotaDeviceInterface.ForceSendMQTTStatus(data, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -97,7 +114,7 @@ namespace Hspi.DeviceData
 
         public async Task<TasmotaFullStatus> GetStatus()
         {
-            return await TasmotaDeviceInterface.GetFullStatus(this.Data, cancellationToken).ConfigureAwait(false);
+            return await TasmotaDeviceInterface.GetFullStatus(this.GetValidatedData(), cancellationToken).ConfigureAwait(false);
         }
 
         protected virtual void Dispose(bool disposing)
@@ -115,25 +132,28 @@ namespace Hspi.DeviceData
 
         private static void AddSuffix(TasmotaDeviceFeature feature, NewFeatureData data)
         {
-            var unitAttribute = EnumHelper.GetAttribute<UnitAttribute>(feature.DataType);
-            string suffix = unitAttribute?.Unit;
-
-            if (!string.IsNullOrWhiteSpace(suffix))
+            if (feature.DataType.HasValue)
             {
-                data.Feature.Add(EProperty.AdditionalStatusData, new List<string>() { suffix });
+                var unitAttribute = EnumHelper.GetAttribute<UnitAttribute>(feature.DataType);
+                var suffix = unitAttribute?.Unit;
 
-                var graphics = data.Feature[EProperty.StatusGraphics] as StatusGraphicCollection;
-
-                if (graphics != null)
+                if (!string.IsNullOrWhiteSpace(suffix))
                 {
-                    foreach (var statusGraphic in graphics.Values)
-                    {
-                        statusGraphic.HasAdditionalData = true;
+                    data.Feature.Add(EProperty.AdditionalStatusData, new List<string>() { suffix! });
 
-                        if (statusGraphic.IsRange)
+                    var graphics = data.Feature[EProperty.StatusGraphics] as StatusGraphicCollection;
+
+                    if (graphics != null)
+                    {
+                        foreach (var statusGraphic in graphics.Values)
                         {
-                            statusGraphic.TargetRange.Suffix = " " + HsFeature.GetAdditionalDataToken(0);
-                            statusGraphic.TargetRange.DecimalPlaces = 3;
+                            statusGraphic.HasAdditionalData = true;
+
+                            if (statusGraphic.IsRange)
+                            {
+                                statusGraphic.TargetRange.Suffix = " " + HsFeature.GetAdditionalDataToken(0);
+                                statusGraphic.TargetRange.DecimalPlaces = 3;
+                            }
                         }
                     }
                 }
@@ -204,10 +224,12 @@ namespace Hspi.DeviceData
 
         private int CreateDeviceFeature(TasmotaDeviceFeature feature)
         {
+#pragma warning disable CA1308 // Normalize strings to uppercase
             string featureName = feature.DataType.ToString().ToLowerInvariant();
+#pragma warning restore CA1308 // Normalize strings to uppercase
             string imagePath = CreateImagePath(featureName);
 
-            FeatureFactory newFeatureData = null;
+            FeatureFactory? newFeatureData = null;
 
             switch (feature.DataType)
             {
@@ -366,8 +388,18 @@ namespace Hspi.DeviceData
                 {
                     var data = this.Data;
 
+                    Debug.Assert(data != null);
+                    if (data == null)
+                    {
+                        throw new Exception("Data is not unexpectely null");
+                    }
+
                     DeviceStatus = await TasmotaDeviceInterface.GetFullStatus(data, cancellationToken).ConfigureAwait(false);
-                    HS.UpdatePropertyByRef(RefId, EProperty.Name, DeviceStatus.DeviceName);
+                    string? deviceName = DeviceStatus.DeviceName;
+                    if (deviceName != null)
+                    {
+                        HS.UpdatePropertyByRef(RefId, EProperty.Name, deviceName);
+                    }
 
                     var device = HS.GetDeviceWithFeaturesByRef(RefId);
 
@@ -397,43 +429,47 @@ namespace Hspi.DeviceData
 
         private void UpdateDevicesValues(TasmotaStatus tasmotaStatus)
         {
-            foreach (var featureKeyValue in features)
+            if (features != null)
             {
-                if (featureKeyValue.Key.SourceType != tasmotaStatus.SourceType)
+                foreach (var featureKeyValue in features)
                 {
-                    continue;
-                }
-
-                try
-                {
-                    var valueType = EnumHelper.GetAttribute<ValueTypeAttribute>(featureKeyValue.Key.DataType);
-
-                    switch (valueType?.Type)
+                    if (featureKeyValue.Key.SourceType != tasmotaStatus.SourceType)
                     {
-                        case null:
-                            break;
-
-                        case ValueType.ValueType:
-                            UpdateDoubleValue(tasmotaStatus, featureKeyValue);
-                            break;
-
-                        case ValueType.StringType:
-                            UpdateStringValue(tasmotaStatus, featureKeyValue);
-                            break;
-
-                        case ValueType.OnOff:
-                            UpdateOnOffValue(tasmotaStatus, featureKeyValue);
-                            break;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    if (ex.IsCancelException())
-                    {
-                        throw;
+                        continue;
                     }
 
-                    logger.Warn(Invariant($"Failed to update {featureKeyValue.Key.Name} with {ExceptionHelper.GetFullMessage(ex)} for {Name}"));
+                    try
+                    {
+                        var valueType = featureKeyValue.Key.DataType.HasValue ?
+                                        EnumHelper.GetAttribute<ValueTypeAttribute>(featureKeyValue.Key.DataType) : null;
+
+                        switch (valueType?.Type)
+                        {
+                            case null:
+                                break;
+
+                            case ValueType.ValueType:
+                                UpdateDoubleValue(tasmotaStatus, featureKeyValue);
+                                break;
+
+                            case ValueType.StringType:
+                                UpdateStringValue(tasmotaStatus, featureKeyValue);
+                                break;
+
+                            case ValueType.OnOff:
+                                UpdateOnOffValue(tasmotaStatus, featureKeyValue);
+                                break;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        if (ex.IsCancelException())
+                        {
+                            throw;
+                        }
+
+                        logger.Warn(Invariant($"Failed to update {featureKeyValue.Key.Name} with {ExceptionHelper.GetFullMessage(ex)} for {Name}"));
+                    }
                 }
             }
         }
@@ -458,26 +494,29 @@ namespace Hspi.DeviceData
 
         private void UpdateLWTValue(string payload)
         {
-            try
+            if (lwtDeviceRefId.HasValue)
             {
-                if (payload == LWTOnline)
+                try
                 {
-                    HSDeviceHelper.UpdateDeviceValue(HS, lwtDeviceRefId.Value, OnValue);
+                    if (payload == LWTOnline)
+                    {
+                        HSDeviceHelper.UpdateDeviceValue(HS, lwtDeviceRefId.Value, OnValue);
+                    }
+                    else if (payload == LWTOffline)
+                    {
+                        logger.Warn(Invariant($"{Name} is offline"));
+                        HSDeviceHelper.UpdateDeviceValue(HS, lwtDeviceRefId.Value, OffValue);
+                    }
+                    else
+                    {
+                        HSDeviceHelper.UpdateDeviceValue(HS, lwtDeviceRefId.Value, null);
+                    }
                 }
-                else if (payload == LWTOffline)
+                catch (Exception ex)
                 {
-                    logger.Warn(Invariant($"{Name} is offline"));
-                    HSDeviceHelper.UpdateDeviceValue(HS, lwtDeviceRefId.Value, OffValue);
-                }
-                else
-                {
+                    logger.Warn(Invariant($"Failed to get value from Device for {Name} : LWT with {ex.GetFullMessage()}"));
                     HSDeviceHelper.UpdateDeviceValue(HS, lwtDeviceRefId.Value, null);
                 }
-            }
-            catch (Exception ex)
-            {
-                logger.Warn(Invariant($"Failed to get value from Device for {Name} : LWT with {ex.GetFullMessage()}"));
-                HSDeviceHelper.UpdateDeviceValue(HS, lwtDeviceRefId.Value, null);
             }
         }
 
@@ -526,12 +565,13 @@ namespace Hspi.DeviceData
         private const string LWTOnline = "Online";
         private const double OffValue = 0;
         private const double OnValue = 1;
-        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+        private readonly static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
         private readonly CancellationToken cancellationToken;
         private readonly AsyncMonitor featureLock = new AsyncMonitor();
         private bool disposedValue;
-        private ImmutableDictionary<TasmotaDeviceFeature, int> features;
+        private ImmutableDictionary<TasmotaDeviceFeature, int>? features;
         private int? lwtDeviceRefId;
-        private IManagedMqttClient mqttClient;
+        private IManagedMqttClient? mqttClient;
+        private TasmotaFullStatus? deviceStatus;
     }
 }

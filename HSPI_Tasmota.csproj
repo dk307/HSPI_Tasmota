@@ -30,6 +30,8 @@
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
+    <Nullable>enable</Nullable>
+    <LangVersion>9.0</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -44,7 +46,6 @@
     <CodeAnalysisRuleSet>ExtendedCorrectnessRules.ruleset</CodeAnalysisRuleSet>
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <Prefer32Bit>false</Prefer32Bit>
-    <LangVersion>7.3</LangVersion>
     <CodeAnalysisIgnoreGeneratedCode>true</CodeAnalysisIgnoreGeneratedCode>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -84,19 +85,21 @@
     <Compile Include="Hspi\DeviceData\Attributes.cs" />
     <Compile Include="Hspi\DeviceData\TasmotaStatus.cs" />
     <Compile Include="Hspi\HSPI.cs" />
+    <Compile Include="Hspi\MQTTServerConfiguration.cs" />
     <Compile Include="Hspi\PlugIn.cs" />
     <Compile Include="Hspi\PlugInAddDevice.cs" />
     <Compile Include="Hspi\PluginConfig.cs" />
     <Compile Include="Hspi\PlugInData.cs" />
     <Compile Include="Hspi\PlugInConfiguration.cs" />
     <Compile Include="Hspi\Program.cs" />
+    <Compile Include="Hspi\Shared\Hspi\CompilerHelper.cs" />
     <Compile Include="Hspi\Shared\Hspi\DeviceData\HSDeviceHelper.cs" />
     <Compile Include="Hspi\Shared\Hspi\HSPIBase.cs" />
     <Compile Include="Hspi\Shared\Hspi\Logger.cs" />
     <Compile Include="Hspi\Shared\Hspi\PluginConfigBase.cs" />
     <Compile Include="Hspi\Shared\Hspi\Utils\EnumHelper.cs" />
     <Compile Include="Hspi\Shared\Hspi\Utils\ExceptionHelper.cs" />
-    <Compile Include="Hspi\Shared\Hspi\Utils\MiscHelpet.cs" />
+    <Compile Include="Hspi\Shared\Hspi\Utils\MiscHelper.cs" />
     <Compile Include="Hspi\Shared\Hspi\Utils\ObjectSerialize.cs" />
     <Compile Include="Hspi\Shared\Hspi\Utils\ScribanHelper.cs" />
     <Compile Include="Hspi\Shared\Hspi\Utils\TaskHelper.cs" />

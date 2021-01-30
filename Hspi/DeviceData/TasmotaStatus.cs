@@ -2,12 +2,13 @@
 using NullGuard;
 using System.Collections.Generic;
 
+#nullable enable
+
 namespace Hspi.DeviceData
 {
-    [NullGuard(ValidationFlags.Arguments | ValidationFlags.NonPublic)]
-    internal class TasmotaStatus
+     internal class TasmotaStatus
     {
-        public TasmotaStatus(TasmotaDeviceFeature.FeatureSource sourceType, [AllowNull] JObject source)
+        public TasmotaStatus(TasmotaDeviceFeature.FeatureSource sourceType, JObject? source)
         {
             SourceType = sourceType;
             this.source = source;
@@ -15,7 +16,7 @@ namespace Hspi.DeviceData
 
         public TasmotaDeviceFeature.FeatureSource SourceType { get; }
 
-        public T GetFeatureValue<T>(TasmotaDeviceFeature feature)
+        public T? GetFeatureValue<T>(TasmotaDeviceFeature feature)
         {
             if (source != null)
             {
@@ -29,6 +30,6 @@ namespace Hspi.DeviceData
             throw new KeyNotFoundException(feature.Id);
         }
 
-        private readonly JObject source;
+        private readonly JObject? source;
     };
 }
