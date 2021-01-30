@@ -3,7 +3,6 @@ using HomeSeer.PluginSdk.Devices;
 using HomeSeer.PluginSdk.Devices.Controls;
 using Hspi.DeviceData;
 using Hspi.Utils;
-using MQTTnet.Server;
 using Nito.AsyncEx;
 using System;
 using System.Collections.Generic;
@@ -92,13 +91,12 @@ namespace Hspi
             this.Status = PluginStatus.Ok();
         }
 
- 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
                 tasmotaDeviceManager?.Dispose();
-                mqttServer?.Dispose();
+                mqttServerInstance?.Stop().ResultForSync();
             }
             base.Dispose(disposing);
         }
@@ -113,8 +111,6 @@ namespace Hspi
 
                 logger.Info("Starting Plugin");
 
-                  mqttServer = MqttHelper.StartServer(ShutdownCancellationToken).ResultForSync();
-
                 HomeSeerSystem.RegisterEventCB(Constants.HSEvent.CONFIG_CHANGE, PlugInData.PlugInId);
 
                 // Device Add Page
@@ -123,6 +119,7 @@ namespace Hspi
                 // Feature pages
                 HomeSeerSystem.RegisterFeaturePage(Id, "configuration.html", "Configuration");
                 HomeSeerSystem.RegisterFeaturePage(Id, "devicelist.html", "Devices");
+                HomeSeerSystem.RegisterFeaturePage(Id, "mqttconfiguration.html", "MQTT Server Configuration");
 
                 RestartProcessing();
 
@@ -135,6 +132,7 @@ namespace Hspi
                 throw;
             }
         }
+
         private async Task<ImmutableDictionary<int, TasmotaDevice>> GetTasmotaDevices()
         {
             using (var sync = await deviceManagerLock.EnterAsync(ShutdownCancellationToken))
@@ -152,6 +150,7 @@ namespace Hspi
         private void RestartProcessing()
         {
             Utils.TaskHelper.StartAsyncWithErrorChecking("Device Start", StartDevices, ShutdownCancellationToken);
+            Utils.TaskHelper.StartAsyncWithErrorChecking("MQTT Server", StartMQTTServer, ShutdownCancellationToken);
         }
 
         private async Task StartDevices()
@@ -163,15 +162,48 @@ namespace Hspi
                                                                 ShutdownCancellationToken);
             }
         }
+
+        private async Task StartMQTTServer()
+        {
+            try
+            {
+                using (var sync = await mqttServerLock.EnterAsync(ShutdownCancellationToken))
+                {
+                    bool recreate = (mqttServerInstance == null) ||
+                            (!mqttServerInstance.Configuration.Equals(pluginConfig!.MQTTServerConfiguration));
+
+                    if (recreate)
+                    {
+                        if (mqttServerInstance != null)
+                        {
+                            await mqttServerInstance.Stop().ConfigureAwait(false);
+                            mqttServerInstance = null;
+                        }
+                        mqttServerInstance = await MqttHelper.StartServer(this.pluginConfig!.MQTTServerConfiguration).ConfigureAwait(false);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (ex.IsCancelException())
+                {
+                    throw;
+                }
+                logger.Error($"Failed to start MQTT Server with {ex.GetFullMessage()}");
+            }
+        }
+
         private void UpdateDebugLevel()
         {
             this.LogDebug = pluginConfig!.DebugLogging;
             Logger.ConfigureLogging(LogDebug, pluginConfig.LogToFile, HomeSeerSystem);
         }
+
         private readonly static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
         private readonly AsyncMonitor deviceManagerLock = new AsyncMonitor();
+        private readonly AsyncMonitor mqttServerLock = new AsyncMonitor();
+        private MqttServerInstance? mqttServerInstance;
         private PluginConfig? pluginConfig;
         private TasmotaDeviceManager? tasmotaDeviceManager;
-        private IMqttServer? mqttServer;
     }
 }

@@ -31,7 +31,8 @@ namespace Hspi
                 {
                     mQTTServerConfiguration = value;
                     SetValue(MQTTServerIPAddressKey, value.BoundIPAddress);
-                    SetValue(MQTTServerEnableKey, value.Enable);
+                    SetValue(MQTTServerEnableKey, value.Enabled);
+                    SetValue(MQTTServerPortKey, value.Port);
                 }
             }
         }
@@ -39,18 +40,20 @@ namespace Hspi
         private MQTTServerConfiguration LoadDBSettings()
         {
             string ipAddressString = GetValue(MQTTServerIPAddressKey, string.Empty);
+            int port = GetValue(MQTTServerPortKey, 1883);
 
             if (!IPAddress.TryParse(ipAddressString, out var ipAddress))
             {
                 ipAddress = null;
             }
 
-            return new MQTTServerConfiguration(GetValue(MQTTServerEnableKey, true), ipAddress);
+            return new MQTTServerConfiguration(GetValue(MQTTServerEnableKey, true), ipAddress, port);
         }
 
         private MQTTServerConfiguration mQTTServerConfiguration;
         private readonly AsyncReaderWriterLock configLock = new AsyncReaderWriterLock();
         private const string MQTTServerEnableKey = "MQTTServerEnabled";
         private const string MQTTServerIPAddressKey = "MQTTServerIPAddress";
+        private const string MQTTServerPortKey = "MQTTServerPort";
     }
 }

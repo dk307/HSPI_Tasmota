@@ -90,7 +90,7 @@
     <Compile Include="Hspi\PlugInAddDevice.cs" />
     <Compile Include="Hspi\PluginConfig.cs" />
     <Compile Include="Hspi\PlugInData.cs" />
-    <Compile Include="Hspi\PlugInConfiguration.cs" />
+    <Compile Include="Hspi\PlugInScribanConfigHelper.cs" />
     <Compile Include="Hspi\Program.cs" />
     <Compile Include="Hspi\Shared\Hspi\CompilerHelper.cs" />
     <Compile Include="Hspi\Shared\Hspi\DeviceData\HSDeviceHelper.cs" />
@@ -100,7 +100,6 @@
     <Compile Include="Hspi\Shared\Hspi\Utils\EnumHelper.cs" />
     <Compile Include="Hspi\Shared\Hspi\Utils\ExceptionHelper.cs" />
     <Compile Include="Hspi\Shared\Hspi\Utils\MiscHelper.cs" />
-    <Compile Include="Hspi\Shared\Hspi\Utils\ObjectSerialize.cs" />
     <Compile Include="Hspi\Shared\Hspi\Utils\ScribanHelper.cs" />
     <Compile Include="Hspi\Shared\Hspi\Utils\TaskHelper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

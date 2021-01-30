@@ -2,7 +2,9 @@
 using Hspi.Utils;
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading.Tasks;
+using static System.FormattableString;
 
 #nullable enable
 
@@ -26,8 +28,8 @@ namespace Hspi
             var errors = new List<string>();
             try
             {
-                pluginConfig!.DebugLogging = CheckBoolValue(DebugLoggingConfiguration);
-                pluginConfig!.LogToFile = CheckBoolValue(LogToFileConfiguration);
+                pluginConfig!.DebugLogging = CheckBoolValue(configuration, DebugLoggingConfiguration);
+                pluginConfig!.LogToFile = CheckBoolValue(configuration, LogToFileConfiguration);
                 PluginConfigChanged();
             }
             catch (Exception ex)
@@ -35,8 +37,8 @@ namespace Hspi
                 errors.Add(ex.GetFullMessage());
             }
             return errors;
-
-            bool CheckBoolValue(string key)
+            
+            static bool CheckBoolValue(IDictionary<string, string> configuration, string key)
             {
                 return configuration.ContainsKey(key) && configuration[key] == "on";
             }
@@ -84,6 +86,40 @@ namespace Hspi
 
                 return list;
             }
+        }
+
+        public IDictionary<string, object> GetMQTTServerConfiguration()
+        {
+            return ScribanHelper.ToDictionary(pluginConfig!.MQTTServerConfiguration);
+        }
+
+        public IList<string> SaveMQTTServerConfiguration(IDictionary<string, string> configuration)
+        {
+            var errors = new List<string>();
+            try
+            {
+                logger.Debug(Invariant($"Updating MQTT Server Information"));
+
+                IPAddress? ipAddress = null;
+                if (!string.IsNullOrEmpty(configuration["boundipaddress"]) &&
+                    !IPAddress.TryParse(configuration["boundipaddress"], out ipAddress))
+                {
+                    errors.Add("IP Address is not valid");
+                }
+
+                if (errors.Count == 0)
+                {
+                    pluginConfig!.MQTTServerConfiguration =
+                        ScribanHelper.FromDictionary<MQTTServerConfiguration>(configuration);
+
+                    PluginConfigChanged();
+                }
+            }
+            catch (Exception ex)
+            {
+                errors.Add(ex.GetFullMessage());
+            }
+            return errors;
         }
     }
 }

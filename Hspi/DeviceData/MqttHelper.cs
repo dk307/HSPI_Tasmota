@@ -5,8 +5,6 @@ using Newtonsoft.Json;
 using NLog;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 #nullable enable
@@ -31,10 +29,9 @@ namespace Hspi.DeviceData
             }
 
             string data = JsonConvert.SerializeObject(messages);
-            var buffer = Encoding.UTF8.GetBytes(data);
+            File.WriteAllText(Filename, data);
 
-            using var fs = new FileStream(Filename, FileMode.OpenOrCreate, FileAccess.Write, FileShare.None, buffer.Length, true);
-            return fs.WriteAsync(buffer, 0, buffer.Length);
+            return Task.CompletedTask;
         }
 
         public Task<IList<MqttApplicationMessage>> LoadRetainedMessagesAsync()
@@ -54,23 +51,54 @@ namespace Hspi.DeviceData
         }
     };
 
+    internal sealed class MqttServerInstance
+    {
+        public MqttServerInstance(IMqttServer? server,
+                                  MQTTServerConfiguration configuration)
+        {
+            this.Server = server;
+            this.Configuration = configuration;
+        }
+
+        public async Task Stop()
+        {
+            if (Server != null)
+            {
+                await Server.StopAsync().ConfigureAwait(false);
+                Server.Dispose();
+            }
+        }
+
+        public MQTTServerConfiguration Configuration { get; }
+        public IMqttServer? Server { get; }
+    }
+
     internal static class MqttHelper
     {
-        public static async Task<IMqttServer> StartServer(CancellationToken cancellationToken)
+        public static async Task<MqttServerInstance> StartServer(MQTTServerConfiguration serverConfiguration)
         {
-            string hsDir = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
-            string storagefile = Path.Combine(hsDir, "data", PlugInData.PlugInId, "retained.json");
+            if (serverConfiguration.Enabled)
+            {
+                logger.Info($"Starting Mqtt Server");
+                string hsDir = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
+                string storagefile = Path.Combine(hsDir, "data", PlugInData.PlugInId, "retained.json");
 
-            // Configure MQTT server.
-            var optionsBuilder = new MqttServerOptionsBuilder()
-                .WithConnectionBacklog(512)
-                .WithStorage(new MqttStorage(storagefile))
-                .WithDefaultEndpointPort(1883);
+                // Configure MQTT server.
+                var optionsBuilder = new MqttServerOptionsBuilder()
+                    .WithConnectionBacklog(512)
+                    .WithStorage(new MqttStorage(storagefile))
+                    .WithDefaultEndpointPort(1883);
 
-            var mqttServer = new MqttFactory().CreateMqttServer();
-            await mqttServer.StartAsync(optionsBuilder.Build()).ConfigureAwait(false);
-            cancellationToken.Register(async () => await mqttServer.StopAsync().ConfigureAwait(false));
-            return mqttServer;
+                if (serverConfiguration.BoundIPAddress != null)
+                {
+                    optionsBuilder = optionsBuilder.WithDefaultEndpointBoundIPAddress(serverConfiguration.BoundIPAddress);
+                }
+
+                var mqttServer = new MqttFactory().CreateMqttServer();
+                await mqttServer.StartAsync(optionsBuilder.Build()).ConfigureAwait(false);
+                return new MqttServerInstance(mqttServer, serverConfiguration);
+            }
+            return new MqttServerInstance(null, serverConfiguration);
         }
 
         public static void SetLogging()
@@ -83,11 +111,10 @@ namespace Hspi.DeviceData
                 switch (e.LogMessage.Level)
                 {
                     case MqttNetLogLevel.Verbose:
-                        logEventInfo.Level = LogLevel.Debug;
-                        break;
+                        return;
 
                     case MqttNetLogLevel.Info:
-                        logEventInfo.Level = LogLevel.Debug;
+                        logEventInfo.Level = LogLevel.Info;
                         break;
 
                     case MqttNetLogLevel.Warning:
@@ -101,7 +128,7 @@ namespace Hspi.DeviceData
 
                 logEventInfo.Exception = logMessage.Exception;
                 logEventInfo.TimeStamp = logMessage.Timestamp;
-                logEventInfo.Message = logMessage.Message;
+                logEventInfo.Message = "[MQTT]" + logMessage.Message;
 
                 logger.Log(logEventInfo);
             };

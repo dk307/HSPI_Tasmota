@@ -1,4 +1,6 @@
-﻿using System.Net;
+﻿using Newtonsoft.Json;
+using System;
+using System.Net;
 
 #nullable enable
 
@@ -6,13 +8,43 @@ namespace Hspi
 {
     internal sealed record MQTTServerConfiguration
     {
-        public readonly bool Enable;
-        public readonly IPAddress? BoundIPAddress;
+        public readonly bool Enabled;
 
-        public MQTTServerConfiguration(bool enable, IPAddress? boundIPAddress)
+        [JsonConverter(typeof(IPAddressConverter))]
+        public readonly IPAddress? BoundIPAddress;
+        public readonly int Port;
+
+        public MQTTServerConfiguration(bool enabled, IPAddress? boundIPAddress, int port)
         {
-            Enable = enable;
+            Enabled = enabled;
             BoundIPAddress = boundIPAddress;
+            Port = port;
+        }
+
+        internal class IPAddressConverter : JsonConverter
+        {
+            public override bool CanConvert(Type objectType)
+            {
+                return (objectType == typeof(IPAddress));
+            }
+
+            public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
+            {
+                writer.WriteValue(value?.ToString() ?? null);
+            }
+
+            public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)
+            {
+                var value = (string?) reader.Value;
+                if (!string.IsNullOrEmpty(value))
+                {
+                    return IPAddress.Parse(value);
+                }
+                else
+                {
+                    return null;
+                }
+            }
         }
     }
 }
