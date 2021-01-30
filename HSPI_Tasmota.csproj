@@ -205,6 +205,8 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Hspi\html\adddevice.html" />
+    <Content Include="Hspi\html\configuration.html" />
+    <Content Include="Hspi\html\devicelist.html" />
     <Content Include="Hspi\html\images\amperage.png" />
     <Content Include="Hspi\html\images\apparentpower.png" />
     <Content Include="Hspi\html\images\dewpoint.png" />
@@ -228,6 +230,9 @@
     <Content Include="Hspi\html\images\uptime.png" />
     <Content Include="Hspi\html\images\voltage.png" />
     <Content Include="Hspi\html\images\wifi.png" />
+    <Content Include="Hspi\html\jquery.dataTables.css" />
+    <Content Include="Hspi\html\jquery.dataTables.min.js" />
+    <Content Include="Hspi\html\mqttconfiguration.html" />
     <Content Include="install.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
