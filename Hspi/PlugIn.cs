@@ -149,47 +149,43 @@ namespace Hspi
 
         private void RestartProcessing()
         {
-            Utils.TaskHelper.StartAsyncWithErrorChecking("Device Start", StartDevices, ShutdownCancellationToken);
-            Utils.TaskHelper.StartAsyncWithErrorChecking("MQTT Server", StartMQTTServer, ShutdownCancellationToken);
+            Utils.TaskHelper.StartAsyncWithErrorChecking("Main Task", MainTask, ShutdownCancellationToken);
         }
 
-        private async Task StartDevices()
+        private async Task MainTask()
         {
+            var serverDetails  = await StartMQTTServer().ConfigureAwait(false);
+
             using (var sync = await deviceManagerLock.EnterAsync(ShutdownCancellationToken))
             {
                 tasmotaDeviceManager?.Dispose();
                 tasmotaDeviceManager = new TasmotaDeviceManager(HomeSeerSystem,
+                                                                serverDetails,
                                                                 ShutdownCancellationToken);
             }
+            
+             
         }
 
-        private async Task StartMQTTServer()
+        private async Task<MqttServerDetails> StartMQTTServer()
         {
-            try
+            using (var sync = await mqttServerLock.EnterAsync(ShutdownCancellationToken))
             {
-                using (var sync = await mqttServerLock.EnterAsync(ShutdownCancellationToken))
-                {
-                    bool recreate = (mqttServerInstance == null) ||
-                            (!mqttServerInstance.Configuration.Equals(pluginConfig!.MQTTServerConfiguration));
+                bool recreate = (mqttServerInstance == null) ||
+                        (!mqttServerInstance.Configuration.Equals(pluginConfig!.MQTTServerConfiguration));
 
-                    if (recreate)
-                    {
-                        if (mqttServerInstance != null)
-                        {
-                            await mqttServerInstance.Stop().ConfigureAwait(false);
-                            mqttServerInstance = null;
-                        }
-                        mqttServerInstance = await MqttHelper.StartServer(this.pluginConfig!.MQTTServerConfiguration).ConfigureAwait(false);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                if (ex.IsCancelException())
+                if (recreate)
                 {
-                    throw;
+                    if (mqttServerInstance != null)
+                    {
+                        await mqttServerInstance.Stop().ConfigureAwait(false);
+                        mqttServerInstance = null;
+                    }
+
+                    mqttServerInstance = await MqttServerInstance.StartServer(this.pluginConfig!.MQTTServerConfiguration).ConfigureAwait(false);
                 }
-                logger.Error($"Failed to start MQTT Server with {ex.GetFullMessage()}");
+
+                return mqttServerInstance!.GetServerDetails();
             }
         }
 

@@ -76,6 +76,9 @@
   <ItemGroup>
     <Compile Include="Hspi\DeviceData\DeviceBase.cs" />
     <Compile Include="Hspi\DeviceData\MqttHelper.cs" />
+    <Compile Include="Hspi\DeviceData\MqttServerDetails.cs" />
+    <Compile Include="Hspi\DeviceData\MqttServerInstance.cs" />
+    <Compile Include="Hspi\DeviceData\MqttStorage.cs" />
     <Compile Include="Hspi\DeviceData\TasmotaDeviceFeature.cs" />
     <Compile Include="Hspi\DeviceData\TasmotaDevice.cs" />
     <Compile Include="Hspi\DeviceData\TasmotaDeviceInfo.cs" />

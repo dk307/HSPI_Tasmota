@@ -6,7 +6,7 @@
  "Version":"4.0.0.0",
  "Packages":[
   {
-    "PackageName": "InfluxDB History",
+    "PackageName": "Tasmota",
     "EXEFile": "HSPI_Tasmota.exe",
     "ID": "Tasmota",
     "Version": "<#=version#>",
@@ -19,7 +19,6 @@
     "SupportURL": "https://github.com/dk307/HSPI_Tasmota/issues",
     "Tags": [
       "Free",
-      "History",
       "Beta"
     ]
   } 

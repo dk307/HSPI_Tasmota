@@ -43,7 +43,8 @@ namespace Hspi.DeviceData
                 changes.TryGetValue(nameof(Uri), out uri);
             }
 
-            return new TasmotaDeviceInfo(uri != null ? new Uri(uri) : throw new Exception("uri not valid"),
+            Uri uri1 = uri != null ? new Uri(uri) : (existing?.Uri ?? throw new Exception("uri not valid"));
+            return new TasmotaDeviceInfo(uri1,
                                          user ?? existing?.User,
                                          password ?? existing?.Password,
                                          enabledFeatures);

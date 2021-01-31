@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json;
-using NullGuard;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -10,7 +9,7 @@ using static System.FormattableString;
 
 namespace Hspi.DeviceData
 {
-     internal static class TasmotaDeviceInterface
+    internal static class TasmotaDeviceInterface
     {
         public static async Task<TasmotaFullStatus> GetFullStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
         {
@@ -28,6 +27,12 @@ namespace Hspi.DeviceData
         public static async Task ForceSendMQTTStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
         {
             await SendWebCommandToDevice(data, "Backlog TelePeriod; Delay 10; TelePeriod", cancellationToken).ConfigureAwait(false);
+        }
+
+        public static async Task UpdateMqttServerDetails(TasmotaDeviceInfo data, MqttServerDetails mqttServerDetails, CancellationToken cancellationToken)
+        {
+            string command = Invariant($"Backlog MqttHost {mqttServerDetails.Host}; MqttPort {mqttServerDetails.Port}; MqttUser ; MqttPassword ;");
+            await SendWebCommandToDevice(data, command, cancellationToken).ConfigureAwait(false);
         }
 
         private static async Task<IDictionary<string, string>> GetMqttTopics(TasmotaDeviceInfo data, CancellationToken cancellationToken)

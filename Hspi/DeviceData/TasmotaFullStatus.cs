@@ -8,18 +8,6 @@ using System.Linq;
 
 namespace Hspi.DeviceData
 {
-    internal sealed record MqttDetails
-    {
-        public MqttDetails(string host, int port)
-        {
-            Host = host;
-            Port = port;
-        }
-
-        public readonly string Host;
-        public readonly int Port;
-    }
-
     internal sealed class TasmotaFullStatus
     {
         public TasmotaFullStatus(string jsonStatus,
@@ -37,13 +25,13 @@ namespace Hspi.DeviceData
 
         public string? DeviceName => GetStringValue("Status", "DeviceName");
 
-        public MqttDetails MqttServerDetails
+        public MqttServerDetails MqttServerDetails
         {
             get
             {
                 // "MqttHost":"192.168.1.135","MqttPort":1883,"MqttClientMask":"DVES_%06X","MqttClient":"DVES_07E83D","MqttUser":"DVES_USER","MqttCount":1,"MAX_PACKET_SIZE":1200,"KEEPALIVE":30}}
                 int? port = GetValue<int>("StatusMQT", "MqttPort");
-                return new MqttDetails(GetStringValue("StatusMQT", "MqttHost") ?? throw new KeyNotFoundException(),
+                return new MqttServerDetails(GetStringValue("StatusMQT", "MqttHost") ?? throw new KeyNotFoundException(),
                                        port.HasValue ? port.Value : throw new KeyNotFoundException());
             }
         }
@@ -106,7 +94,13 @@ namespace Hspi.DeviceData
             return null;
         }
 
-        private Nullable<T> GetValue<T>(params string[] parameters) where T : struct
+        private string? GetStringValue(params string[] parameters)
+        {
+            JToken? token = GetToken(parameters);
+            return token?.ToObject<string>();
+        }
+
+        private JToken? GetToken(string[] parameters)
         {
             JToken? token = deviceStatus;
             foreach (var value in parameters)
@@ -118,6 +112,13 @@ namespace Hspi.DeviceData
 
                 token = token[value];
             }
+
+            return token;
+        }
+
+        private Nullable<T> GetValue<T>(params string[] parameters) where T : struct
+        {
+            JToken? token = GetToken(parameters);
 
             if (token != null)
             {
@@ -126,23 +127,6 @@ namespace Hspi.DeviceData
 
             return null;
         }
-
-        private string? GetStringValue(params string[] parameters)
-        {
-            JToken? token = deviceStatus;
-            foreach (var value in parameters)
-            {
-                if (token == null)
-                {
-                    break;
-                }
-
-                token = token[value];
-            }
-
-            return token?.ToObject<string>();
-        }
-
         private readonly JObject deviceStatus;
     }
 }

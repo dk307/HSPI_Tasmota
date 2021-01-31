@@ -25,11 +25,15 @@ namespace Hspi.DeviceData
 {
     internal class TasmotaDevice : DeviceBase<TasmotaDeviceInfo>, IDisposable
     {
-        public TasmotaDevice(IHsController HS, int refId, CancellationToken cancellationToken)
+        public TasmotaDevice(IHsController HS,
+                             int refId,
+                             MqttServerDetails hostedServerDetails,
+                             CancellationToken cancellationToken)
             : base(HS, refId)
         {
+            this.hostedServerDetails = hostedServerDetails;
             this.cancellationToken = cancellationToken;
-            Utils.TaskHelper.StartAsyncWithErrorChecking("Device Start", UpdateDeviceProperties, cancellationToken);
+            Utils.TaskHelper.StartAsyncWithErrorChecking(Invariant($"Device Start {refId}"), UpdateDeviceProperties, cancellationToken);
         }
 
         public static string RootDeviceType => "tasmota-root";
@@ -306,13 +310,20 @@ namespace Hspi.DeviceData
 
             if (!string.IsNullOrWhiteSpace(mqttServerDetails.Host))
             {
+                // verify it is same as this server otherwise update it
+                if (!hostedServerDetails.Equals(mqttServerDetails))
+                {
+                    await TasmotaDeviceInterface.UpdateMqttServerDetails(GetValidatedData(), hostedServerDetails, cancellationToken).ConfigureAwait(false);
+                    throw new Exception($"{Name} mqtt details do not match hosted mqtt server details. Updated it.");
+                }
+
                 var options = new ManagedMqttClientOptionsBuilder()
-                    .WithAutoReconnectDelay(TimeSpan.FromSeconds(10))
-                    .WithClientOptions(new MqttClientOptionsBuilder()
-                        .WithClientId(Invariant($"Homeseer-{RefId}"))
-                        .WithTcpServer(mqttServerDetails.Host, mqttServerDetails.Port)
-                        .Build())
-                    .Build();
+                                    .WithAutoReconnectDelay(TimeSpan.FromSeconds(10))
+                                    .WithClientOptions(new MqttClientOptionsBuilder()
+                                        .WithClientId(Invariant($"Homeseer-{RefId}"))
+                                        .WithTcpServer(mqttServerDetails.Host, mqttServerDetails.Port)
+                                        .Build())
+                                    .Build();
 
                 mqttClient = new MqttFactory().CreateManagedMqttClient();
 
@@ -382,48 +393,52 @@ namespace Hspi.DeviceData
 
         private async Task UpdateDeviceProperties()
         {
-            try
+            while (!cancellationToken.IsCancellationRequested)
             {
-                using (var _ = await featureLock.EnterAsync(cancellationToken).ConfigureAwait(false))
+                try
                 {
-                    var data = this.Data;
-
-                    Debug.Assert(data != null);
-                    if (data == null)
+                    using (var _ = await featureLock.EnterAsync(cancellationToken).ConfigureAwait(false))
                     {
-                        throw new Exception("Data is not unexpectely null");
+                        var data = this.Data;
+
+                        Debug.Assert(data != null);
+                        if (data == null)
+                        {
+                            throw new Exception("Data is not unexpectely null");
+                        }
+
+                        DeviceStatus = await TasmotaDeviceInterface.GetFullStatus(data, cancellationToken).ConfigureAwait(false);
+                        string? deviceName = DeviceStatus.DeviceName;
+                        if (deviceName != null)
+                        {
+                            HS.UpdatePropertyByRef(RefId, EProperty.Name, deviceName);
+                        }
+
+                        var device = HS.GetDeviceWithFeaturesByRef(RefId);
+
+                        lwtDeviceRefId = CreateAndUpdateLWTFeature(device);
+                        features = CreateAndUpdateFeatures(data, device).ToImmutableDictionary();
+
+                        foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
+                        {
+                            UpdateDevicesValues(DeviceStatus.GetStatus(sourceType));
+                        }
+
+                        await MQTTSubscribe().ConfigureAwait(false);
                     }
 
-                    DeviceStatus = await TasmotaDeviceInterface.GetFullStatus(data, cancellationToken).ConfigureAwait(false);
-                    string? deviceName = DeviceStatus.DeviceName;
-                    if (deviceName != null)
-                    {
-                        HS.UpdatePropertyByRef(RefId, EProperty.Name, deviceName);
-                    }
-
-                    var device = HS.GetDeviceWithFeaturesByRef(RefId);
-
-                    lwtDeviceRefId = CreateAndUpdateLWTFeature(device);
-                    features = CreateAndUpdateFeatures(data, device).ToImmutableDictionary();
-
-                    foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
-                    {
-                        UpdateDevicesValues(DeviceStatus.GetStatus(sourceType));
-                    }
-
-                    await MQTTSubscribe().ConfigureAwait(false);
+                    break;
                 }
-            }
-            catch (Exception ex)
-            {
-                if (ex.IsCancelException())
+                catch (Exception ex)
                 {
-                    throw;
+                    if (ex.IsCancelException())
+                    {
+                        throw;
+                    }
+
+                    logger.Warn(Invariant($"Failed to connect to device with {ExceptionHelper.GetFullMessage(ex)} for {Name}. Retrying again in 15s..."));
+                    await Task.Delay(15000, cancellationToken).ConfigureAwait(false);
                 }
-
-                logger.Warn(Invariant($"Failed to connect to device with {ExceptionHelper.GetFullMessage(ex)} for {Name}. Retrying again in 15s..."));
-
-                await Task.Delay(15000, cancellationToken).ConfigureAwait(false);
             }
         }
 
@@ -566,6 +581,7 @@ namespace Hspi.DeviceData
         private const double OffValue = 0;
         private const double OnValue = 1;
         private readonly static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+        private readonly MqttServerDetails hostedServerDetails;
         private readonly CancellationToken cancellationToken;
         private readonly AsyncMonitor featureLock = new AsyncMonitor();
         private bool disposedValue;

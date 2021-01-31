@@ -16,9 +16,11 @@ namespace Hspi.DeviceData
      internal sealed class TasmotaDeviceManager : IDisposable
     {
         public TasmotaDeviceManager(IHsController HS,
+                                    MqttServerDetails hostedMQTTServerDetails,
                                     CancellationToken cancellationToken)
         {
             this.HS = HS;
+            this.hostedMQTTServerDetails = hostedMQTTServerDetails;
             this.cancellationToken = cancellationToken;
             this.combinedToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
@@ -56,7 +58,7 @@ namespace Hspi.DeviceData
 
                         if (deviceType == TasmotaDevice.RootDeviceType)
                         {
-                            TasmotaDevice importDevice = new TasmotaDevice(HS, refId, combinedToken.Token);
+                            TasmotaDevice importDevice = new TasmotaDevice(HS, refId, hostedMQTTServerDetails, combinedToken.Token);
                             devices.Add(refId, importDevice);
                         }
                     }
@@ -76,6 +78,7 @@ namespace Hspi.DeviceData
         private readonly CancellationTokenSource combinedToken;
 #pragma warning restore CA2213 // Disposable fields should be disposed
         private readonly IHsController HS;
+        private readonly MqttServerDetails hostedMQTTServerDetails;
         private readonly ImmutableDictionary<int, TasmotaDevice> importDevices;
         private bool disposedValue;
     };
