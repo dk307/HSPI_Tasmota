@@ -1,4 +1,4 @@
-﻿namespace Hspi.DeviceData
+﻿namespace Hspi.DeviceData.Tasmota
 {
     [System.AttributeUsage(System.AttributeTargets.All)
 ]

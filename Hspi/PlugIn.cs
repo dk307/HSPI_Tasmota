@@ -114,12 +114,12 @@ namespace Hspi
                 HomeSeerSystem.RegisterEventCB(Constants.HSEvent.CONFIG_CHANGE, PlugInData.PlugInId);
 
                 // Device Add Page
-                HomeSeerSystem.RegisterDeviceIncPage(Id, "adddevice.html", "Add Tasmota Device");
+                HomeSeerSystem.RegisterDeviceIncPage(TelePeriodId, "adddevice.html", "Add Tasmota Device");
 
                 // Feature pages
-                HomeSeerSystem.RegisterFeaturePage(Id, "configuration.html", "Configuration");
-                HomeSeerSystem.RegisterFeaturePage(Id, "devicelist.html", "Devices");
-                HomeSeerSystem.RegisterFeaturePage(Id, "mqttconfiguration.html", "MQTT Server Configuration");
+                HomeSeerSystem.RegisterFeaturePage(TelePeriodId, "configuration.html", "Configuration");
+                HomeSeerSystem.RegisterFeaturePage(TelePeriodId, "devicelist.html", "Devices");
+                HomeSeerSystem.RegisterFeaturePage(TelePeriodId, "mqttconfiguration.html", "MQTT Server Configuration");
 
                 RestartProcessing();
 
@@ -149,12 +149,15 @@ namespace Hspi
 
         private void RestartProcessing()
         {
-            Utils.TaskHelper.StartAsyncWithErrorChecking("Main Task", MainTask, ShutdownCancellationToken);
+            Utils.TaskHelper.StartAsyncWithErrorChecking("Main Task", 
+                                                          MainTask, 
+                                                          ShutdownCancellationToken,
+                                                          TimeSpan.FromSeconds(10));
         }
 
         private async Task MainTask()
         {
-            var serverDetails  = await StartMQTTServer().ConfigureAwait(false);
+            var serverDetails = await StartMQTTServer().ConfigureAwait(false);
 
             using (var sync = await deviceManagerLock.EnterAsync(ShutdownCancellationToken))
             {
@@ -163,8 +166,6 @@ namespace Hspi
                                                                 serverDetails,
                                                                 ShutdownCancellationToken);
             }
-            
-             
         }
 
         private async Task<MqttServerDetails> StartMQTTServer()

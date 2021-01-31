@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Hspi.DeviceData.Tasmota;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 

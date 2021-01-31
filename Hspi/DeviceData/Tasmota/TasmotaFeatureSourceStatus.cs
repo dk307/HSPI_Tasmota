@@ -4,11 +4,11 @@ using System.Collections.Generic;
 
 #nullable enable
 
-namespace Hspi.DeviceData
+namespace Hspi.DeviceData.Tasmota
 {
-     internal class TasmotaStatus
+     internal sealed class TasmotaFeatureSourceStatus
     {
-        public TasmotaStatus(TasmotaDeviceFeature.FeatureSource sourceType, JObject? source)
+        public TasmotaFeatureSourceStatus(TasmotaDeviceFeature.FeatureSource sourceType, JObject? source)
         {
             SourceType = sourceType;
             this.source = source;

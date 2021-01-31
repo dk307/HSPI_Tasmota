@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 using NullGuard;
 using System.ComponentModel;
 
-namespace Hspi.DeviceData
+namespace Hspi.DeviceData.Tasmota
 {
     public sealed record TasmotaDeviceFeature
     {

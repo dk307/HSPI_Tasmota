@@ -1,5 +1,7 @@
-﻿using HomeSeer.Jui.Views;
+﻿using HomeSeer.Jui.Types;
+using HomeSeer.Jui.Views;
 using Hspi.DeviceData;
+using Hspi.DeviceData.Tasmota;
 using Hspi.Utils;
 using System;
 using System.Collections.Generic;
@@ -15,7 +17,6 @@ namespace Hspi
     internal partial class PlugIn : HspiBase
     {
         public override bool SupportsConfigDevice => true;
-
         public IDictionary<string, object> AddTasmotaDevice(IDictionary<string, string> tasmotaDataDict)
         {
             int? refId = null;
@@ -56,20 +57,27 @@ namespace Hspi
             if (tasmotaDevices.TryGetValue(deviceRef, out var tasmotaDevice))
             {
                 var data = tasmotaDevice.Data;
-                page = page.WithInput(nameof(TasmotaDeviceInfo.Uri), "Http url of the device", data?.Uri?.ToString() ?? string.Empty, HomeSeer.Jui.Types.EInputType.Url)
-                           .WithInput(nameof(TasmotaDeviceInfo.User), "User", data?.User ?? string.Empty, HomeSeer.Jui.Types.EInputType.Text)
-                           .WithInput(nameof(TasmotaDeviceInfo.Password), "Password", data?.Password ?? string.Empty, HomeSeer.Jui.Types.EInputType.Password);
+                page = page.WithInput(nameof(TasmotaDeviceInfo.Uri), "Http url of the device", data?.Uri?.ToString() ?? string.Empty, EInputType.Url)
+                           .WithInput(nameof(TasmotaDeviceInfo.User), "User", data?.User ?? string.Empty, EInputType.Text)
+                           .WithInput(nameof(TasmotaDeviceInfo.Password), "Password", data?.Password ?? string.Empty, EInputType.Password);
 
                 try
                 {
-                    var tasmotaStatus = tasmotaDevice.GetStatus().ResultForSync();
-                    var possibleFeatures = tasmotaStatus.GetPossibleFeatures();
-
-                    var groups = possibleFeatures.GroupBy((x) => x.SourceType);
-
-                    foreach (var group in groups)
+                    if (data != null)
                     {
-                        AddFeatureEnabledOptions(EnumHelper.GetDescription(group.Key), group, data?.EnabledFeatures ?? ImmutableHashSet<TasmotaDeviceFeature>.Empty);
+                        var tasmotaStatus = TasmotaDeviceInterface.GetStatus(data, ShutdownCancellationToken).ResultForSync();
+                        var possibleFeatures = tasmotaStatus.GetPossibleFeatures();
+                        var telePeriod = TasmotaDeviceInterface.GetTelePeriod(data, ShutdownCancellationToken).ResultForSync();
+
+                        var groups = possibleFeatures.GroupBy((x) => x.SourceType);
+
+                        page = page.WithInput(TelePeriodId, TelePeriodId,
+                                               telePeriod.ToString(CultureInfo.InvariantCulture), EInputType.Number);
+
+                        foreach (var group in groups)
+                        {
+                            AddFeatureEnabledOptions(EnumHelper.GetDescription(group.Key), group, data?.EnabledFeatures ?? ImmutableHashSet<TasmotaDeviceFeature>.Empty);
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -148,7 +156,7 @@ namespace Hspi
                     tasmotaDevice.Data = data;
 
                     // update enabled features later
-                    var tasmotaStatus = tasmotaDevice.GetStatus().ResultForSync();
+                    var tasmotaStatus = TasmotaDeviceInterface.GetStatus(data, ShutdownCancellationToken).ResultForSync();
                     var possibleFeatures = tasmotaStatus.GetPossibleFeatures();
 
                     var newList = new HashSet<TasmotaDeviceFeature>(data.EnabledFeatures);
@@ -158,6 +166,12 @@ namespace Hspi
                     }
 
                     tasmotaDevice.Data = TasmotaDeviceInfo.CreateNew(data, null, newList);
+
+                    if (changes.ContainsKey(TelePeriodId))
+                    {
+                        var teleperiod = int.Parse(changes[TelePeriodId], NumberStyles.Any, CultureInfo.InvariantCulture);
+                        TasmotaDeviceInterface.SetTelePeriod(data, teleperiod, ShutdownCancellationToken).ResultForSync();
+                    }
 
                     return true;
                 }
@@ -211,5 +225,7 @@ namespace Hspi
         {
             return feature.FullUniqueId.Replace('.', '_');
         }
+
+        private const string TelePeriodId = "TelePeriod";
     }
 }

@@ -18,20 +18,6 @@ namespace Hspi.DeviceData
 
         public string Filename { get; }
 
-        public Task SaveRetainedMessagesAsync(IList<MqttApplicationMessage> messages)
-        {
-            var directory = Path.GetDirectoryName(Filename);
-            if (!Directory.Exists(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            string data = JsonConvert.SerializeObject(messages);
-            File.WriteAllText(Filename, data);
-
-            return Task.CompletedTask;
-        }
-
         public Task<IList<MqttApplicationMessage>> LoadRetainedMessagesAsync()
         {
             IList<MqttApplicationMessage> retainedMessages;
@@ -46,6 +32,20 @@ namespace Hspi.DeviceData
             }
 
             return Task.FromResult(retainedMessages);
+        }
+
+        public Task SaveRetainedMessagesAsync(IList<MqttApplicationMessage> messages)
+        {
+            var directory = Path.GetDirectoryName(Filename);
+            if (!Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            string data = JsonConvert.SerializeObject(messages);
+            File.WriteAllText(Filename, data);
+
+            return Task.CompletedTask;
         }
     };
 }

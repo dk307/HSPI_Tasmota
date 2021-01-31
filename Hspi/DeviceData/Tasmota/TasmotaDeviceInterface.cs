@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -7,26 +8,44 @@ using System.Threading;
 using System.Threading.Tasks;
 using static System.FormattableString;
 
-namespace Hspi.DeviceData
+namespace Hspi.DeviceData.Tasmota
 {
     internal static class TasmotaDeviceInterface
     {
-        public static async Task<TasmotaFullStatus> GetFullStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
+        public static async Task ForceSendMQTTStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
         {
-            return new TasmotaFullStatus(await SendWebCommandToDevice(data, "STATUS 0", cancellationToken).ConfigureAwait(false),
+            await SendWebCommandToDevice(data, "Backlog State; Delay 10; State", cancellationToken).ConfigureAwait(false);
+        }
+
+        public static async Task<TasmotaDeviceFullStatus> GetFullStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
+        {
+            return new TasmotaDeviceFullStatus(await SendWebCommandToDevice(data, "STATUS 0", cancellationToken).ConfigureAwait(false),
                                          await SendWebCommandToDeviceAsDict(data, "STATETEXT", cancellationToken).ConfigureAwait(false),
                                          await GetMqttTopics(data, cancellationToken).ConfigureAwait(false));
         }
 
+        public static async Task<TasmotaDeviceStatus> GetStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
+        {
+            return new TasmotaDeviceStatus(await SendWebCommandToDevice(data, "STATUS 0", cancellationToken).ConfigureAwait(false));
+        }
+
+        public static async Task<int> GetTelePeriod(TasmotaDeviceInfo data, CancellationToken cancellationToken)
+        {
+            string command = Invariant($"TelePeriod");
+            var resultString = await SendWebCommandToDevice(data, command, cancellationToken).ConfigureAwait(false);
+            var jobject = JObject.Parse(resultString);
+            return jobject?[command]?.ToObject<int>() ?? throw new KeyNotFoundException("TelePeriod");
+        }
+
         public static async Task SendOnOffCommand(TasmotaDeviceInfo data, string command, bool isOn,
-                                                  CancellationToken cancellationToken)
+                                                          CancellationToken cancellationToken)
         {
             await SendWebCommandToDevice(data, Invariant($"{command} {isOn}"), cancellationToken).ConfigureAwait(false);
         }
-
-        public static async Task ForceSendMQTTStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
+        public static async Task SetTelePeriod(TasmotaDeviceInfo data, int value, CancellationToken cancellationToken)
         {
-            await SendWebCommandToDevice(data, "Backlog TelePeriod; Delay 10; TelePeriod", cancellationToken).ConfigureAwait(false);
+            string command = Invariant($"TelePeriod {value}");
+            await SendWebCommandToDevice(data, command, cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task UpdateMqttServerDetails(TasmotaDeviceInfo data, MqttServerDetails mqttServerDetails, CancellationToken cancellationToken)
@@ -34,7 +53,6 @@ namespace Hspi.DeviceData
             string command = Invariant($"Backlog MqttHost {mqttServerDetails.Host}; MqttPort {mqttServerDetails.Port}; MqttUser ; MqttPassword ;");
             await SendWebCommandToDevice(data, command, cancellationToken).ConfigureAwait(false);
         }
-
         private static async Task<IDictionary<string, string>> GetMqttTopics(TasmotaDeviceInfo data, CancellationToken cancellationToken)
         {
             var fullTopicResult = await SendWebCommandToDeviceAsDict(data, "FullTopic", cancellationToken).ConfigureAwait(false);

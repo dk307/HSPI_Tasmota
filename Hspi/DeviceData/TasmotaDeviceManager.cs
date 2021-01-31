@@ -77,8 +77,8 @@ namespace Hspi.DeviceData
 #pragma warning disable CA2213 // Disposable fields should be disposed
         private readonly CancellationTokenSource combinedToken;
 #pragma warning restore CA2213 // Disposable fields should be disposed
-        private readonly IHsController HS;
         private readonly MqttServerDetails hostedMQTTServerDetails;
+        private readonly IHsController HS;
         private readonly ImmutableDictionary<int, TasmotaDevice> importDevices;
         private bool disposedValue;
     };

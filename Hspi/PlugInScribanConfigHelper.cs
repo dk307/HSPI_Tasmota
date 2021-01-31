@@ -1,4 +1,5 @@
 ﻿using Hspi.DeviceData;
+using Hspi.DeviceData.Tasmota;
 using Hspi.Utils;
 using System;
 using System.Collections.Generic;
@@ -37,7 +38,7 @@ namespace Hspi
                 errors.Add(ex.GetFullMessage());
             }
             return errors;
-            
+
             static bool CheckBoolValue(IDictionary<string, string> configuration, string key)
             {
                 return configuration.ContainsKey(key) && configuration[key] == "on";
@@ -51,13 +52,18 @@ namespace Hspi
             async Task<IList<IDictionary<string, object>>> GetDevicesAsync()
             {
                 var list = new List<IDictionary<string, object>>();
-                var statusMap = new Dictionary<int, Task<TasmotaFullStatus>>();
+                var statusMap = new Dictionary<int, Task<TasmotaDeviceStatus>>();
 
                 var devices = await this.GetTasmotaDevices().ConfigureAwait(false);
 
                 foreach (var pair in devices)
                 {
-                    statusMap.Add(pair.Key, pair.Value.GetStatus());
+                    TasmotaDeviceInfo? data = pair.Value.Data;
+                    if (data != null)
+                    {
+                        statusMap.Add(pair.Key,
+                                      TasmotaDeviceInterface.GetStatus(data, ShutdownCancellationToken));
+                    }
                 }
 
                 foreach (var pair in devices)
@@ -71,13 +77,16 @@ namespace Hspi
 
                     try
                     {
-                        var status = await statusMap[pair.Key].ConfigureAwait(false);
+                        if (statusMap.TryGetValue(pair.Key, out var task))
+                        {
+                            var status = await task.ConfigureAwait(false);
 
-                        data.Add("Version", status.Version ?? string.Empty);
-                        data.Add("BuildDateTime", status.BuildDateTime ?? string.Empty);
-                        data.Add("BootCount", status.BootCount ?? string.Empty);
-                        data.Add("UpTime", status.Uptime ?? string.Empty);
-                        data.Add("RestartReason", status.RestartReason ?? string.Empty);
+                            data.Add("Version", status.Version ?? string.Empty);
+                            data.Add("BuildDateTime", status.BuildDateTime ?? string.Empty);
+                            data.Add("BootCount", status.BootCount ?? string.Empty);
+                            data.Add("UpTime", status.Uptime ?? string.Empty);
+                            data.Add("RestartReason", status.RestartReason ?? string.Empty);
+                        }
                     }
                     catch { }
 

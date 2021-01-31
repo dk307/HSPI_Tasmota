@@ -1,22 +1,17 @@
 ﻿using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 
 #nullable enable
 
-namespace Hspi.DeviceData
+namespace Hspi.DeviceData.Tasmota
 {
-    internal sealed class TasmotaFullStatus
+    internal class TasmotaDeviceStatus
     {
-        public TasmotaFullStatus(string jsonStatus,
-                                 IDictionary<string, string> switchText,
-                                 IDictionary<string, string> mqttStatus)
+        public TasmotaDeviceStatus(string jsonStatus)
         {
             deviceStatus = JObject.Parse(jsonStatus);
-            SwitchText = switchText.ToImmutableDictionary();
-            MqttStatus = mqttStatus.ToImmutableDictionary();
         }
 
         public string? BootCount => GetStringValue("StatusPRM", "BootCount");
@@ -36,16 +31,11 @@ namespace Hspi.DeviceData
             }
         }
 
-        public ImmutableDictionary<string, string> MqttStatus { get; }
-
         public string? RestartReason => GetStringValue("StatusPRM", "RestartReason");
-
-        public ImmutableDictionary<string, string> SwitchText { get; }
 
         public string? Uptime => GetStringValue("StatusPRM", "Uptime");
 
         public string? Version => GetStringValue("StatusFWR", "Version");
-
         public IList<TasmotaDeviceFeature> GetPossibleFeatures()
         {
             var list = new List<TasmotaDeviceFeature>();
@@ -64,10 +54,10 @@ namespace Hspi.DeviceData
                     IEnumerable<JToken> jTokens = child.Descendants().Where(p => !p.Any());
                     var childResults = jTokens.Aggregate(new List<TasmotaDeviceFeature>(),
                                                          (paths, jToken) =>
-                    {
-                        paths.Add(new TasmotaDeviceFeature(jToken.Path, jToken.Path, featureType, null));
-                        return paths;
-                    });
+                                                         {
+                                                             paths.Add(new TasmotaDeviceFeature(jToken.Path, jToken.Path, featureType, null));
+                                                             return paths;
+                                                         });
                     return childResults;
                 }
 
@@ -75,9 +65,9 @@ namespace Hspi.DeviceData
             }
         }
 
-        public TasmotaStatus GetStatus(TasmotaDeviceFeature.FeatureSource type)
+        public TasmotaFeatureSourceStatus GetStatus(TasmotaDeviceFeature.FeatureSource type)
         {
-            return new TasmotaStatus(type, GetObject(type) as JObject);
+            return new TasmotaFeatureSourceStatus(type, GetObject(type) as JObject);
         }
 
         private JToken? GetObject(TasmotaDeviceFeature.FeatureSource type)
@@ -127,6 +117,7 @@ namespace Hspi.DeviceData
 
             return null;
         }
+
         private readonly JObject deviceStatus;
     }
 }
