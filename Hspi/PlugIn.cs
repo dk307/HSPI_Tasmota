@@ -114,12 +114,12 @@ namespace Hspi
                 HomeSeerSystem.RegisterEventCB(Constants.HSEvent.CONFIG_CHANGE, PlugInData.PlugInId);
 
                 // Device Add Page
-                HomeSeerSystem.RegisterDeviceIncPage(TelePeriodId, "adddevice.html", "Add Tasmota Device");
+                HomeSeerSystem.RegisterDeviceIncPage(PlugInData.PlugInId, "adddevice.html", "Add Tasmota Device");
 
                 // Feature pages
-                HomeSeerSystem.RegisterFeaturePage(TelePeriodId, "configuration.html", "Configuration");
-                HomeSeerSystem.RegisterFeaturePage(TelePeriodId, "devicelist.html", "Devices");
-                HomeSeerSystem.RegisterFeaturePage(TelePeriodId, "mqttconfiguration.html", "MQTT Server Configuration");
+                HomeSeerSystem.RegisterFeaturePage(PlugInData.PlugInId, "configuration.html", "Configuration");
+                HomeSeerSystem.RegisterFeaturePage(PlugInData.PlugInId, "devicelist.html", "Devices");
+                HomeSeerSystem.RegisterFeaturePage(PlugInData.PlugInId, "mqttconfiguration.html", "MQTT Server Configuration");
 
                 RestartProcessing();
 

@@ -57,7 +57,7 @@ namespace Hspi.DeviceData
         }
 
         public override string DeviceType => RootDeviceType;
-        private string? MqttTopicPrefix => DeviceStatus.MqttStatus?["Prefix3"];
+        private string? MqttTopicPrefix => DeviceStatus?.MQTTPrefix3FinalTopic;
 
         public static async Task<int> CreateNew(IHsController HS,
                                                 TasmotaDeviceInfo data,
@@ -106,10 +106,22 @@ namespace Hspi.DeviceData
 
             async Task SendCommand(KeyValuePair<TasmotaDeviceFeature, int> feature, bool on)
             {
-                logger.Info(Invariant($"Turning {(on ? "ON" : "OFF")} {Name} : {feature.Key.Name}"));
-                var data = GetValidatedData();
-                await TasmotaDeviceInterface.SendOnOffCommand(data, feature.Key.Name, on, cancellationToken).ConfigureAwait(false);
-                await TasmotaDeviceInterface.ForceSendMQTTStatus(data, cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    logger.Info(Invariant($"Turning {(on ? "ON" : "OFF")} {Name} : {feature.Key.Name}"));
+                    var data = GetValidatedData();
+                    await TasmotaDeviceInterface.SendOnOffCommand(data, feature.Key.Name, on, cancellationToken).ConfigureAwait(false);
+                    await TasmotaDeviceInterface.ForceSendMQTTStatus(data, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    if (ex.IsCancelException())
+                    {
+                        throw;
+                    }
+
+                    logger.Warn(Invariant($"Failed to Turn {(on ? "ON" : "OFF")} {Name} : {feature.Key.Name} with {ex.GetFullMessage()}"));
+                }
             }
         }
 
@@ -118,8 +130,6 @@ namespace Hspi.DeviceData
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
-
-
 
         protected virtual void Dispose(bool disposing)
         {
@@ -188,7 +198,7 @@ namespace Hspi.DeviceData
                 {
                     logger.Debug(Invariant($"Found feature {feature.Name} for {device.Name}"));
                     featuresNew.Add(feature, device.Features[index].Ref);
-                 }
+                }
             }
 
             // delete removed sensors
@@ -307,47 +317,42 @@ namespace Hspi.DeviceData
             // Setup and start a managed MQTT client.
             var mqttServerDetails = DeviceStatus.MqttServerDetails;
 
-            if (!string.IsNullOrWhiteSpace(mqttServerDetails.Host))
+            // verify it is same as this server otherwise update it
+            if (!hostedServerDetails.Equals(mqttServerDetails))
             {
-                // verify it is same as this server otherwise update it
-                if (!hostedServerDetails.Equals(mqttServerDetails))
-                {
-                    await TasmotaDeviceInterface.UpdateMqttServerDetails(GetValidatedData(), hostedServerDetails, cancellationToken).ConfigureAwait(false);
-                    throw new Exception($"{Name} mqtt details do not match hosted mqtt server details. Updated it.");
-                }
-
-                var options = new ManagedMqttClientOptionsBuilder()
-                                    .WithAutoReconnectDelay(TimeSpan.FromSeconds(10))
-                                    .WithClientOptions(new MqttClientOptionsBuilder()
-                                        .WithClientId(Invariant($"Homeseer-{RefId}"))
-                                        .WithTcpServer(mqttServerDetails.Host, mqttServerDetails.Port)
-                                        .Build())
-                                    .Build();
-
-                mqttClient = new MqttFactory().CreateManagedMqttClient();
-
-                var topicFiltersBuilderLWT = new MqttTopicFilterBuilder()
-                                              .WithTopic(MqttTopicPrefix + "LWT")
-                                              .WithAtLeastOnceQoS();
-
-                var topicFiltersBuilder3 = new MqttTopicFilterBuilder()
-                                              .WithTopic(MqttTopicPrefix + "+");
-
-                mqttClient.UseApplicationMessageReceivedHandler(e =>
-                {
-                    ProcessMQTTMessage(e.ApplicationMessage).ResultForSync();
-                    e.ProcessingFailed = false;
-                });
-                await mqttClient.SubscribeAsync(topicFiltersBuilderLWT.Build(), topicFiltersBuilder3.Build()).ConfigureAwait(false);
-
-                cancellationToken.Register(() => mqttClient.StopAsync());
-                await mqttClient.StartAsync(options).ConfigureAwait(false);
+                await UpdateMqttServerDetails().ConfigureAwait(false);
+                throw new Exception($"{Name} mqtt details do not match hosted mqtt server details. Updated it.");
             }
-            else
+
+            var options = new ManagedMqttClientOptionsBuilder()
+                                .WithAutoReconnectDelay(TimeSpan.FromSeconds(10))
+                                .WithClientOptions(new MqttClientOptionsBuilder()
+                                    .WithClientId(Invariant($"Homeseer-{RefId}"))
+                                    .WithTcpServer(mqttServerDetails.Host, mqttServerDetails.Port)
+                                    .Build())
+                                .Build();
+
+            mqttClient = new MqttFactory().CreateManagedMqttClient();
+
+            logger.Info($"Subscribing to {MqttTopicPrefix} for {Name}");
+
+            var topicFiltersBuilderLWT = new MqttTopicFilterBuilder()
+                                          .WithTopic(MqttTopicPrefix + "LWT")
+                                          .WithAtLeastOnceQoS();
+
+            var topicFiltersBuilder3 = new MqttTopicFilterBuilder()
+                                          .WithTopic(MqttTopicPrefix + "+");
+
+            mqttClient.UseApplicationMessageReceivedHandler(e =>
             {
-                logger.Error(Invariant($"{Name} does not have valid MQTT Configuration"));
-            }
-        }
+                ProcessMQTTMessage(e.ApplicationMessage).ResultForSync();
+                e.ProcessingFailed = false;
+            });
+            await mqttClient.SubscribeAsync(topicFiltersBuilderLWT.Build(), topicFiltersBuilder3.Build()).ConfigureAwait(false);
+
+            cancellationToken.Register(() => mqttClient.StopAsync());
+            await mqttClient.StartAsync(options).ConfigureAwait(false);
+         }
 
         private async Task ProcessMQTTMessage(MqttApplicationMessage message)
         {
@@ -483,7 +488,6 @@ namespace Hspi.DeviceData
                 HSDeviceHelper.UpdateDeviceValue(HS, featureKeyPair.Value, null);
             }
         }
- 
 
         private void UpdateLWTValue(string payload)
         {
@@ -513,6 +517,10 @@ namespace Hspi.DeviceData
             }
         }
 
+        private async Task UpdateMqttServerDetails()
+        {
+            await TasmotaDeviceInterface.UpdateMqttServerDetails(GetValidatedData(), hostedServerDetails, cancellationToken).ConfigureAwait(false);
+        }
         private void UpdateOnOffValue(TasmotaFeatureSourceStatus tasmotaStatus, KeyValuePair<TasmotaDeviceFeature, int> feature)
         {
             try

@@ -53,16 +53,7 @@
 				</div>
 			</div>
 		{{end}}
-		
-		<div class="row mt-1 mb-1 no-gutters">	
-			<span class="hs-toggle-control"> 
-				<span class="form-check form-check-inline hs-toggle-checkbox"> 
-					<input type="checkbox" class="form-check-input checkitem" id="enabled" name="enabled"  {{if data["enabled"]}}checked{{end}}> 
-					<label class="form-check-label hs-toggle-checkbox-label" for="enabled">Enabled</label> 
-				</span> 
-			</span>	
-		</div>	
-	
+			
 		<div class="row mt-1 mb-1">
 			<div class="md-form col-md">	 
 				<input type="text" id="boundipaddress" class="form-control" name="boundipaddress" value="{{data['boundipaddress']| html.escape}}">

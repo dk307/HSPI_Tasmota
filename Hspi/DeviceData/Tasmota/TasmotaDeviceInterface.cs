@@ -21,7 +21,7 @@ namespace Hspi.DeviceData.Tasmota
         {
             return new TasmotaDeviceFullStatus(await SendWebCommandToDevice(data, "STATUS 0", cancellationToken).ConfigureAwait(false),
                                          await SendWebCommandToDeviceAsDict(data, "STATETEXT", cancellationToken).ConfigureAwait(false),
-                                         await GetMqttTopics(data, cancellationToken).ConfigureAwait(false));
+                                         await GetMqttFullTopicForPrefix3(data, cancellationToken).ConfigureAwait(false));
         }
 
         public static async Task<TasmotaDeviceStatus> GetStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
@@ -42,6 +42,7 @@ namespace Hspi.DeviceData.Tasmota
         {
             await SendWebCommandToDevice(data, Invariant($"{command} {isOn}"), cancellationToken).ConfigureAwait(false);
         }
+
         public static async Task SetTelePeriod(TasmotaDeviceInfo data, int value, CancellationToken cancellationToken)
         {
             string command = Invariant($"TelePeriod {value}");
@@ -50,26 +51,21 @@ namespace Hspi.DeviceData.Tasmota
 
         public static async Task UpdateMqttServerDetails(TasmotaDeviceInfo data, MqttServerDetails mqttServerDetails, CancellationToken cancellationToken)
         {
-            string command = Invariant($"Backlog MqttHost {mqttServerDetails.Host}; MqttPort {mqttServerDetails.Port}; MqttUser ; MqttPassword ;");
+            string command = Invariant($"Backlog SetOption3 1; MqttHost {mqttServerDetails.Host}; MqttPort {mqttServerDetails.Port}; MqttUser ; MqttPassword ;");
             await SendWebCommandToDevice(data, command, cancellationToken).ConfigureAwait(false);
         }
-        private static async Task<IDictionary<string, string>> GetMqttTopics(TasmotaDeviceInfo data, CancellationToken cancellationToken)
+
+        private static async Task<string> GetMqttFullTopicForPrefix3(TasmotaDeviceInfo data, CancellationToken cancellationToken)
         {
-            var fullTopicResult = await SendWebCommandToDeviceAsDict(data, "FullTopic", cancellationToken).ConfigureAwait(false);
-            var prefixResult = await SendWebCommandToDeviceAsDict(data, "Prefix", cancellationToken).ConfigureAwait(false);
-            var topicResult = await SendWebCommandToDeviceAsDict(data, "Topic", cancellationToken).ConfigureAwait(false);
+            var fullTopic = await SendWebCommandToDeviceAsString(data, "FullTopic", cancellationToken).ConfigureAwait(false);
 
-            string fullTopic = fullTopicResult["FullTopic"];
-            fullTopic = fullTopic.Replace("%topic%", topicResult["Topic"]);
-
-            var topics = new Dictionary<string, string>();
-
-            foreach (var prefix in prefixResult)
+            if (fullTopic.Contains("%prefix%"))
             {
-                topics.Add(prefix.Key, fullTopic.Replace("%prefix%", prefix.Value));
+                var prefix3 = await SendWebCommandToDeviceAsString(data, "Prefix3", cancellationToken).ConfigureAwait(false);
+                fullTopic = fullTopic.Replace("%prefix%", prefix3);
             }
 
-            return topics;
+            return fullTopic;
         }
 
         private static async Task<string> SendWebCommandToDevice(TasmotaDeviceInfo data,
@@ -100,6 +96,14 @@ namespace Hspi.DeviceData.Tasmota
         {
             var result = await SendWebCommandToDevice(data, command, cancellationToken).ConfigureAwait(false);
             return JsonConvert.DeserializeObject<IDictionary<string, string>>(result);
+        }
+
+        private static async Task<string> SendWebCommandToDeviceAsString(TasmotaDeviceInfo data,
+                                                                                    string command,
+                                                                                    CancellationToken cancellationToken)
+        {
+            var result = await SendWebCommandToDevice(data, command, cancellationToken).ConfigureAwait(false);
+            return JsonConvert.DeserializeObject<IDictionary<string, string>>(result)[command];
         }
 
         private static HttpClient httpClient = new HttpClient();

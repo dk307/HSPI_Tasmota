@@ -19,6 +19,9 @@ namespace Hspi.DeviceData.Tasmota
         public string? BuildDateTime => GetStringValue("StatusFWR", "BuildDateTime");
 
         public string? DeviceName => GetStringValue("Status", "DeviceName");
+        public string? MQTTTopic => GetStringValue("Status", "Topic");
+        public string? MacAdddress => GetStringValue("StatusNET", "Mac");
+        public string? Hostname => GetStringValue("StatusNET", "Hostname");
 
         public MqttServerDetails MqttServerDetails
         {
@@ -36,6 +39,7 @@ namespace Hspi.DeviceData.Tasmota
         public string? Uptime => GetStringValue("StatusPRM", "Uptime");
 
         public string? Version => GetStringValue("StatusFWR", "Version");
+
         public IList<TasmotaDeviceFeature> GetPossibleFeatures()
         {
             var list = new List<TasmotaDeviceFeature>();
