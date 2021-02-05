@@ -135,7 +135,7 @@ namespace Hspi
 
         private async Task<ImmutableDictionary<int, TasmotaDevice>> GetTasmotaDevices()
         {
-            using (var sync = await deviceManagerLock.EnterAsync(ShutdownCancellationToken))
+            using (var _ = await dataLock.LockAsync(ShutdownCancellationToken))
             {
                 return tasmotaDeviceManager?.ImportDevices ?? ImmutableDictionary<int, TasmotaDevice>.Empty;
             }
@@ -149,18 +149,18 @@ namespace Hspi
 
         private void RestartProcessing()
         {
-            Utils.TaskHelper.StartAsyncWithErrorChecking("Main Task", 
-                                                          MainTask, 
+            Utils.TaskHelper.StartAsyncWithErrorChecking("Main Task",
+                                                          MainTask,
                                                           ShutdownCancellationToken,
                                                           TimeSpan.FromSeconds(10));
         }
 
         private async Task MainTask()
         {
-            var serverDetails = await StartMQTTServer().ConfigureAwait(false);
-
-            using (var sync = await deviceManagerLock.EnterAsync(ShutdownCancellationToken))
+            using (var sync = await dataLock.LockAsync(ShutdownCancellationToken))
             {
+                var serverDetails = await StartMQTTServer().ConfigureAwait(false);
+
                 tasmotaDeviceManager?.Dispose();
                 tasmotaDeviceManager = new TasmotaDeviceManager(HomeSeerSystem,
                                                                 serverDetails,
@@ -170,24 +170,21 @@ namespace Hspi
 
         private async Task<MqttServerDetails> StartMQTTServer()
         {
-            using (var sync = await mqttServerLock.EnterAsync(ShutdownCancellationToken))
+            bool recreate = (mqttServerInstance == null) ||
+                            (!mqttServerInstance.Configuration.Equals(pluginConfig!.MQTTServerConfiguration));
+
+            if (recreate)
             {
-                bool recreate = (mqttServerInstance == null) ||
-                        (!mqttServerInstance.Configuration.Equals(pluginConfig!.MQTTServerConfiguration));
-
-                if (recreate)
+                if (mqttServerInstance != null)
                 {
-                    if (mqttServerInstance != null)
-                    {
-                        await mqttServerInstance.Stop().ConfigureAwait(false);
-                        mqttServerInstance = null;
-                    }
-
-                    mqttServerInstance = await MqttServerInstance.StartServer(this.pluginConfig!.MQTTServerConfiguration).ConfigureAwait(false);
+                    await mqttServerInstance.Stop().ConfigureAwait(false);
+                    mqttServerInstance = null;
                 }
 
-                return mqttServerInstance!.GetServerDetails();
+                mqttServerInstance = await MqttServerInstance.StartServer(this.pluginConfig!.MQTTServerConfiguration).ConfigureAwait(false);
             }
+
+            return mqttServerInstance!.GetServerDetails();
         }
 
         private void UpdateDebugLevel()
@@ -197,10 +194,9 @@ namespace Hspi
         }
 
         private readonly static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
-        private readonly AsyncMonitor deviceManagerLock = new AsyncMonitor();
-        private readonly AsyncMonitor mqttServerLock = new AsyncMonitor();
+        private readonly AsyncLock dataLock = new AsyncLock();
         private MqttServerInstance? mqttServerInstance;
         private PluginConfig? pluginConfig;
-        private TasmotaDeviceManager? tasmotaDeviceManager;
+        private volatile TasmotaDeviceManager? tasmotaDeviceManager;
     }
 }

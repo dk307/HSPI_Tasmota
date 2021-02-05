@@ -2,7 +2,6 @@
 using HomeSeer.PluginSdk.Devices;
 using HomeSeer.PluginSdk.Devices.Identification;
 using Hspi.Utils;
-using NullGuard;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -13,7 +12,7 @@ using static System.FormattableString;
 
 namespace Hspi.DeviceData
 {
-     internal sealed class TasmotaDeviceManager : IDisposable
+    internal sealed class TasmotaDeviceManager : IDisposable
     {
         public TasmotaDeviceManager(IHsController HS,
                                     MqttServerDetails hostedMQTTServerDetails,
