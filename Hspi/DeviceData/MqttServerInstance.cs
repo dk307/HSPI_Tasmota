@@ -37,8 +37,9 @@ namespace Hspi.DeviceData
             {
                 optionsBuilder = optionsBuilder.WithDefaultEndpointBoundIPAddress(serverConfiguration.BoundIPAddress);
             }
+            optionsBuilder = optionsBuilder.WithDefaultEndpointBoundIPV6Address(IPAddress.None);
 
-            var mqttServer = new MqttFactory().CreateMqttServer();
+            var mqttServer = new MqttFactory(new MqttNetLogger()).CreateMqttServer();
             await mqttServer.StartAsync(optionsBuilder.Build()).ConfigureAwait(false);
             return new MqttServerInstance(mqttServer, serverConfiguration);
         }

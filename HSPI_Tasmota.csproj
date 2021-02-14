@@ -75,7 +75,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Hspi\DeviceData\DeviceBase.cs" />
-    <Compile Include="Hspi\DeviceData\MqttHelper.cs" />
+    <Compile Include="Hspi\DeviceData\MqttNetLogger.cs" />
     <Compile Include="Hspi\DeviceData\MqttServerDetails.cs" />
     <Compile Include="Hspi\DeviceData\MqttServerInstance.cs" />
     <Compile Include="Hspi\DeviceData\MqttStorage.cs" />
@@ -140,21 +140,21 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="HomeSeer-PluginSDK">
-      <Version>1.2.1</Version>
+      <Version>1.2.2</Version>
     </PackageReference>
     <PackageReference Include="ILMerge">
       <Version>3.0.41</Version>
     </PackageReference>
     <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers">
-      <Version>3.3.1</Version>
+      <Version>3.3.2</Version>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="MQTTnet">
-      <Version>3.0.13</Version>
+      <Version>3.0.14</Version>
     </PackageReference>
     <PackageReference Include="MQTTnet.Extensions.ManagedClient">
-      <Version>3.0.13</Version>
+      <Version>3.0.14</Version>
     </PackageReference>
     <PackageReference Include="MSBuildTasks">
       <Version>1.5.0.235</Version>

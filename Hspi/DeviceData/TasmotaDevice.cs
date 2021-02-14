@@ -396,7 +396,7 @@ namespace Hspi.DeviceData
                                     .Build())
                                 .Build();
 
-            mqttClient = new MqttFactory().CreateManagedMqttClient();
+            mqttClient = new MqttFactory(new MqttNetLogger()).CreateManagedMqttClient();
 
             logger.Info($"Subscribing to {MqttTopicPrefix} for {Name}");
 
