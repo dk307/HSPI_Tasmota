@@ -14,25 +14,25 @@ namespace Hspi.DeviceData.Tasmota
     {
         public static async Task ForceSendMQTTStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
         {
-            await SendWebCommandToDevice(data, "Backlog State; Delay 10; State", cancellationToken).ConfigureAwait(false);
+            await SendWebCommandForString(data, "Backlog State; Delay 10; State", cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task<TasmotaDeviceFullStatus> GetFullStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
         {
-            return new TasmotaDeviceFullStatus(await SendWebCommandToDevice(data, "STATUS 0", cancellationToken).ConfigureAwait(false),
+            return new TasmotaDeviceFullStatus(await SendWebCommandForString(data, "STATUS 0", cancellationToken).ConfigureAwait(false),
                                          await SendWebCommandToDeviceAsDict(data, "STATETEXT", cancellationToken).ConfigureAwait(false),
                                          await GetMqttFullTopicForPrefix3(data, cancellationToken).ConfigureAwait(false));
         }
 
         public static async Task<TasmotaDeviceStatus> GetStatus(TasmotaDeviceInfo data, CancellationToken cancellationToken)
         {
-            return new TasmotaDeviceStatus(await SendWebCommandToDevice(data, "STATUS 0", cancellationToken).ConfigureAwait(false));
+            return new TasmotaDeviceStatus(await SendWebCommandForString(data, "STATUS 0", cancellationToken).ConfigureAwait(false));
         }
 
         public static async Task<int> GetTelePeriod(TasmotaDeviceInfo data, CancellationToken cancellationToken)
         {
             string command = Invariant($"TelePeriod");
-            var resultString = await SendWebCommandToDevice(data, command, cancellationToken).ConfigureAwait(false);
+            var resultString = await SendWebCommandForString(data, command, cancellationToken).ConfigureAwait(false);
             var jobject = JObject.Parse(resultString);
             return jobject?[command]?.ToObject<int>() ?? throw new KeyNotFoundException("TelePeriod");
         }
@@ -40,19 +40,19 @@ namespace Hspi.DeviceData.Tasmota
         public static async Task SendOnOffCommand(TasmotaDeviceInfo data, string command, bool isOn,
                                                           CancellationToken cancellationToken)
         {
-            await SendWebCommandToDevice(data, Invariant($"{command} {isOn}"), cancellationToken).ConfigureAwait(false);
+            await SendWebCommandForString(data, Invariant($"{command} {isOn}"), cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task SetTelePeriod(TasmotaDeviceInfo data, int value, CancellationToken cancellationToken)
         {
             string command = Invariant($"TelePeriod {value}");
-            await SendWebCommandToDevice(data, command, cancellationToken).ConfigureAwait(false);
+            await SendWebCommandForString(data, command, cancellationToken).ConfigureAwait(false);
         }
 
         public static async Task UpdateMqttServerDetails(TasmotaDeviceInfo data, MqttServerDetails mqttServerDetails, CancellationToken cancellationToken)
         {
             string command = Invariant($"Backlog SetOption3 1; MqttHost {mqttServerDetails.Host}; MqttPort {mqttServerDetails.Port}; MqttUser ; MqttPassword ;");
-            await SendWebCommandToDevice(data, command, cancellationToken).ConfigureAwait(false);
+            await SendWebCommandForString(data, command, cancellationToken).ConfigureAwait(false);
         }
 
         private static async Task<string> GetMqttFullTopicForPrefix3(TasmotaDeviceInfo data, CancellationToken cancellationToken)
@@ -68,9 +68,7 @@ namespace Hspi.DeviceData.Tasmota
             return fullTopic;
         }
 
-        private static async Task<string> SendWebCommandToDevice(TasmotaDeviceInfo data,
-                                                                 string command,
-                                                                 CancellationToken cancellationToken)
+        private static async Task<HttpResponseMessage> SendWebCommand(TasmotaDeviceInfo data, string command, CancellationToken cancellationToken)
         {
             var queryList = new List<string>();
             if (!string.IsNullOrEmpty(data.User))
@@ -87,14 +85,21 @@ namespace Hspi.DeviceData.Tasmota
 
             var result = await httpClient.GetAsync(uriBuilder.Uri, cancellationToken).ConfigureAwait(false);
             result.EnsureSuccessStatusCode();
-            return await result.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return result;
         }
 
+        private static async Task<string> SendWebCommandForString(TasmotaDeviceInfo data,
+                                                                         string command,
+                                                                 CancellationToken cancellationToken)
+        {
+            using var result = await SendWebCommand(data, command, cancellationToken).ConfigureAwait(false);
+            return await result.Content.ReadAsStringAsync().ConfigureAwait(false);
+        }
         private static async Task<IDictionary<string, string>> SendWebCommandToDeviceAsDict(TasmotaDeviceInfo data,
                                                                                             string command,
                                                                                             CancellationToken cancellationToken)
         {
-            var result = await SendWebCommandToDevice(data, command, cancellationToken).ConfigureAwait(false);
+            var result = await SendWebCommandForString(data, command, cancellationToken).ConfigureAwait(false);
             return JsonConvert.DeserializeObject<IDictionary<string, string>>(result);
         }
 
@@ -102,7 +107,7 @@ namespace Hspi.DeviceData.Tasmota
                                                                                     string command,
                                                                                     CancellationToken cancellationToken)
         {
-            var result = await SendWebCommandToDevice(data, command, cancellationToken).ConfigureAwait(false);
+            var result = await SendWebCommandForString(data, command, cancellationToken).ConfigureAwait(false);
             return JsonConvert.DeserializeObject<IDictionary<string, string>>(result)[command];
         }
 
