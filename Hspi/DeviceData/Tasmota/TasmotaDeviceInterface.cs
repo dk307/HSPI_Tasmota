@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -38,7 +39,7 @@ namespace Hspi.DeviceData.Tasmota
         }
 
         public static async Task SendOnOffCommand(TasmotaDeviceInfo data, string command, bool isOn,
-                                                          CancellationToken cancellationToken)
+                                                  CancellationToken cancellationToken)
         {
             await SendWebCommandForString(data, Invariant($"{command} {isOn}"), cancellationToken).ConfigureAwait(false);
         }
@@ -70,12 +71,7 @@ namespace Hspi.DeviceData.Tasmota
 
         private static async Task<HttpResponseMessage> SendWebCommand(TasmotaDeviceInfo data, string command, CancellationToken cancellationToken)
         {
-            var queryList = new List<string>();
-            if (!string.IsNullOrEmpty(data.User))
-            {
-                queryList.Add(Invariant($"user={WebUtility.UrlEncode(data.User)}"));
-                queryList.Add(Invariant($"password={WebUtility.UrlEncode(data.Password)}"));
-            }
+            List<string> queryList = CreateQueryListforCreds(data);
 
             queryList.Add(Invariant($"cmnd={WebUtility.UrlEncode(command)}"));
 
@@ -88,13 +84,45 @@ namespace Hspi.DeviceData.Tasmota
             return result;
         }
 
+        private static List<string> CreateQueryListforCreds(TasmotaDeviceInfo data)
+        {
+            var queryList = new List<string>();
+            if (!string.IsNullOrEmpty(data.User))
+            {
+                queryList.Add(Invariant($"user={WebUtility.UrlEncode(data.User)}"));
+                queryList.Add(Invariant($"password={WebUtility.UrlEncode(data.Password)}"));
+            }
+
+            return queryList;
+        }
+
         private static async Task<string> SendWebCommandForString(TasmotaDeviceInfo data,
-                                                                         string command,
-                                                                 CancellationToken cancellationToken)
+                                                                  string command,
+                                                                  CancellationToken cancellationToken)
         {
             using var result = await SendWebCommand(data, command, cancellationToken).ConfigureAwait(false);
             return await result.Content.ReadAsStringAsync().ConfigureAwait(false);
         }
+
+        public static async Task DownloadSettingsToFile(TasmotaDeviceInfo data,
+                                                       string fileName,
+                                                       CancellationToken cancellationToken)
+        {
+            List<string> queryList = CreateQueryListforCreds(data);
+
+            var uriBuilder = new UriBuilder(data.Uri);
+            uriBuilder.Path = "/dl";
+            uriBuilder.Query = String.Join("&", queryList);
+
+            using var result = await httpClient.GetAsync(uriBuilder.Uri, cancellationToken).ConfigureAwait(false);
+            result.EnsureSuccessStatusCode();
+
+            var backupData = await result.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+
+            using FileStream stream = File.Open(fileName, FileMode.Create);
+            await stream.WriteAsync(backupData, 0, backupData.Length, cancellationToken).ConfigureAwait(false);
+        }
+
         private static async Task<IDictionary<string, string>> SendWebCommandToDeviceAsDict(TasmotaDeviceInfo data,
                                                                                             string command,
                                                                                             CancellationToken cancellationToken)
@@ -111,6 +139,6 @@ namespace Hspi.DeviceData.Tasmota
             return JsonConvert.DeserializeObject<IDictionary<string, string>>(result)[command];
         }
 
-        private static HttpClient httpClient = new HttpClient();
+        private static readonly HttpClient httpClient = new HttpClient();
     }
 }

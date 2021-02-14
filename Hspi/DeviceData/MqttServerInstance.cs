@@ -25,8 +25,7 @@ namespace Hspi.DeviceData
         public static async Task<MqttServerInstance> StartServer(MQTTServerConfiguration serverConfiguration)
         {
             logger.Info($"Starting Mqtt Server");
-            string hsDir = Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
-            string storagefile = Path.Combine(hsDir, "data", PlugInData.PlugInId, "retained.json");
+            string storagefile = Path.Combine(PlugInData.HomeSeerDirectory, "data", PlugInData.PlugInId, "mqtt", "retained.json");
 
             // Configure MQTT server.
             var optionsBuilder = new MqttServerOptionsBuilder()
