@@ -250,7 +250,7 @@ namespace Hspi.DeviceData
         }
 
         private IDictionary<TasmotaDeviceFeature, int> CreateAndUpdateFeatures(TasmotaDeviceInfo data,
-                                                                                               HsDevice device)
+                                                                               HsDevice device)
         {
             var featuresNew = new Dictionary<TasmotaDeviceFeature, int>();
             foreach (var feature in data.EnabledFeatures)
