@@ -18,9 +18,11 @@ namespace Hspi
 
         public IDictionary<string, object> GetGeneralInformation()
         {
-            var configuration = new Dictionary<string, object>();
-            configuration[DebugLoggingConfiguration] = pluginConfig!.DebugLogging;
-            configuration[LogToFileConfiguration] = pluginConfig!.LogToFile;
+            var configuration = new Dictionary<string, object>
+            {
+                [DebugLoggingConfiguration] = pluginConfig!.DebugLogging,
+                [LogToFileConfiguration] = pluginConfig!.LogToFile
+            };
             return configuration;
         }
 
@@ -68,9 +70,10 @@ namespace Hspi
 
                 foreach (var pair in devices)
                 {
-                    var data = new Dictionary<string, object>();
-
-                    data.Add("refId", pair.Key);
+                    var data = new Dictionary<string, object>
+                    {
+                        { "refId", pair.Key }
+                    };
 
                     var tasmotaData = pair.Value.Data;
                     data.Add("uri", tasmotaData?.Uri?.ToString() ?? string.Empty);
@@ -109,9 +112,8 @@ namespace Hspi
             {
                 logger.Debug(Invariant($"Updating MQTT Server Information"));
 
-                IPAddress? ipAddress = null;
                 if (!string.IsNullOrEmpty(configuration["boundipaddress"]) &&
-                    !IPAddress.TryParse(configuration["boundipaddress"], out ipAddress))
+                   !IPAddress.TryParse(configuration["boundipaddress"], out var ipAddress))
                 {
                     errors.Add("IP Address is not valid");
                 }

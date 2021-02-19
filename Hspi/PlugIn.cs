@@ -103,7 +103,6 @@ namespace Hspi
 
         protected override void Initialize()
         {
-            string result = string.Empty;
             try
             {
                 pluginConfig = new PluginConfig(HomeSeerSystem);
@@ -127,7 +126,7 @@ namespace Hspi
             }
             catch (Exception ex)
             {
-                result = Invariant($"Failed to initialize PlugIn with {ex.GetFullMessage()}");
+                string result = Invariant($"Failed to initialize PlugIn with {ex.GetFullMessage()}");
                 logger.Error(result);
                 throw;
             }
@@ -135,10 +134,8 @@ namespace Hspi
 
         private async Task<ImmutableDictionary<int, TasmotaDevice>> GetTasmotaDevices()
         {
-            using (var _ = await dataLock.LockAsync(ShutdownCancellationToken))
-            {
-                return tasmotaDeviceManager?.ImportDevices ?? ImmutableDictionary<int, TasmotaDevice>.Empty;
-            }
+            using var _ = await dataLock.LockAsync(ShutdownCancellationToken);
+            return tasmotaDeviceManager?.ImportDevices ?? ImmutableDictionary<int, TasmotaDevice>.Empty;
         }
 
         private void PluginConfigChanged()
@@ -157,15 +154,13 @@ namespace Hspi
 
         private async Task MainTask()
         {
-            using (var sync = await dataLock.LockAsync(ShutdownCancellationToken))
-            {
-                var serverDetails = await StartMQTTServer().ConfigureAwait(false);
+            using var sync = await dataLock.LockAsync(ShutdownCancellationToken);
+            var serverDetails = await StartMQTTServer().ConfigureAwait(false);
 
-                tasmotaDeviceManager?.Dispose();
-                tasmotaDeviceManager = new TasmotaDeviceManager(HomeSeerSystem,
-                                                                serverDetails,
-                                                                ShutdownCancellationToken);
-            }
+            tasmotaDeviceManager?.Dispose();
+            tasmotaDeviceManager = new TasmotaDeviceManager(HomeSeerSystem,
+                                                            serverDetails,
+                                                            ShutdownCancellationToken);
         }
 
         private async Task<MqttServerDetails> StartMQTTServer()

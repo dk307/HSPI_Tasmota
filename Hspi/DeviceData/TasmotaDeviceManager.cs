@@ -20,7 +20,6 @@ namespace Hspi.DeviceData
         {
             this.HS = HS;
             this.hostedMQTTServerDetails = hostedMQTTServerDetails;
-            this.cancellationToken = cancellationToken;
             this.combinedToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
             importDevices = GetCurrentDevices().ToImmutableDictionary();
@@ -71,8 +70,7 @@ namespace Hspi.DeviceData
             return devices;
         }
 
-        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
-        private readonly CancellationToken cancellationToken;
+        private static readonly NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
 #pragma warning disable CA2213 // Disposable fields should be disposed
         private readonly CancellationTokenSource combinedToken;
 #pragma warning restore CA2213 // Disposable fields should be disposed

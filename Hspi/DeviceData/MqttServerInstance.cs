@@ -63,10 +63,8 @@ namespace Hspi.DeviceData
 
         private static IPAddress? GetLocalIPAddress()
         {
-            var host = default(IPHostEntry);
-            string? hostname = null;
-            hostname = System.Environment.MachineName;
-            host = Dns.GetHostEntry(hostname);
+            string? hostname = Environment.MachineName;
+            IPHostEntry? host = Dns.GetHostEntry(hostname);
             foreach (var IP in host.AddressList)
             {
                 if (IP.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)

@@ -30,7 +30,7 @@ namespace Hspi.DeviceData.Tasmota
                 // "MqttHost":"192.168.1.135","MqttPort":1883,"MqttClientMask":"DVES_%06X","MqttClient":"DVES_07E83D","MqttUser":"DVES_USER","MqttCount":1,"MAX_PACKET_SIZE":1200,"KEEPALIVE":30}}
                 int? port = GetValue<int>("StatusMQT", "MqttPort");
                 return new MqttServerDetails(GetStringValue("StatusMQT", "MqttHost") ?? throw new KeyNotFoundException(),
-                                       port.HasValue ? port.Value : throw new KeyNotFoundException());
+                                       port ?? throw new KeyNotFoundException());
             }
         }
 
@@ -51,9 +51,7 @@ namespace Hspi.DeviceData.Tasmota
 
             IList<TasmotaDeviceFeature> AddForChild(TasmotaDeviceFeature.FeatureSource featureType)
             {
-                var child = GetObject(featureType) as JObject;
-
-                if (child != null)
+                if (GetObject(featureType) is JObject child)
                 {
                     IEnumerable<JToken> jTokens = child.Descendants().Where(p => !p.Any());
                     var childResults = jTokens.Aggregate(new List<TasmotaDeviceFeature>(),
@@ -76,16 +74,12 @@ namespace Hspi.DeviceData.Tasmota
 
         private JToken? GetObject(TasmotaDeviceFeature.FeatureSource type)
         {
-            switch (type)
+            return type switch
             {
-                case TasmotaDeviceFeature.FeatureSource.Sensor:
-                    return deviceStatus["StatusSNS"]?.DeepClone();
-
-                case TasmotaDeviceFeature.FeatureSource.State:
-                    return deviceStatus["StatusSTS"]?.DeepClone();
-            }
-
-            return null;
+                TasmotaDeviceFeature.FeatureSource.Sensor => deviceStatus["StatusSNS"]?.DeepClone(),
+                TasmotaDeviceFeature.FeatureSource.State => deviceStatus["StatusSTS"]?.DeepClone(),
+                _ => null,
+            };
         }
 
         private string? GetStringValue(params string[] parameters)

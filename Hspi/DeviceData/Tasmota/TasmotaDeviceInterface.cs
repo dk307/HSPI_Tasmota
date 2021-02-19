@@ -75,9 +75,11 @@ namespace Hspi.DeviceData.Tasmota
 
             queryList.Add(Invariant($"cmnd={WebUtility.UrlEncode(command)}"));
 
-            var uriBuilder = new UriBuilder(data.Uri);
-            uriBuilder.Path = "/cm";
-            uriBuilder.Query = String.Join("&", queryList);
+            var uriBuilder = new UriBuilder(data.Uri)
+            {
+                Path = "/cm",
+                Query = String.Join("&", queryList)
+            };
 
             var result = await httpClient.GetAsync(uriBuilder.Uri, cancellationToken).ConfigureAwait(false);
             result.EnsureSuccessStatusCode();
@@ -110,9 +112,11 @@ namespace Hspi.DeviceData.Tasmota
         {
             List<string> queryList = CreateQueryListforCreds(data);
 
-            var uriBuilder = new UriBuilder(data.Uri);
-            uriBuilder.Path = "/dl";
-            uriBuilder.Query = String.Join("&", queryList);
+            var uriBuilder = new UriBuilder(data.Uri)
+            {
+                Path = "/dl",
+                Query = String.Join("&", queryList)
+            };
 
             using var result = await httpClient.GetAsync(uriBuilder.Uri, cancellationToken).ConfigureAwait(false);
             result.EnsureSuccessStatusCode();

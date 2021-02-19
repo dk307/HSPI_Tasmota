@@ -19,20 +19,16 @@ namespace Hspi
         {
             get
             {
-                using (var sync = configLock.ReaderLock())
-                {
-                    return mQTTServerConfiguration;
-                }
+                using var sync = configLock.ReaderLock();
+                return mQTTServerConfiguration;
             }
 
             set
             {
-                using (var sync = configLock.WriterLock())
-                {
-                    mQTTServerConfiguration = value;
-                    SetValue(MQTTServerIPAddressKey, value.BoundIPAddress);
-                    SetValue(MQTTServerPortKey, value.Port);
-                }
+                using var sync = configLock.WriterLock();
+                mQTTServerConfiguration = value;
+                SetValue(MQTTServerIPAddressKey, value.BoundIPAddress);
+                SetValue(MQTTServerPortKey, value.Port);
             }
         }
 

@@ -39,7 +39,7 @@ namespace Hspi.DeviceData.Tasmota
 
             if (fullTopicPrefix3[fullTopicPrefix3.Length - 1] != '/')
             {
-                fullTopicPrefix3 = fullTopicPrefix3 + '/';
+                fullTopicPrefix3 += '/';
             }
 
             return fullTopicPrefix3;

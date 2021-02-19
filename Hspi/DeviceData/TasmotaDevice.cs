@@ -138,7 +138,7 @@ namespace Hspi.DeviceData
                 try
                 {
                     string dir = Path.Combine(PlugInData.HomeSeerDirectory, "data", PlugInData.PlugInId, "backup");
-                    string filPath = Path.Combine(dir, Path.ChangeExtension(Name,"dmp"));
+                    string filPath = Path.Combine(dir, Path.ChangeExtension(Name, "dmp"));
 
                     Directory.CreateDirectory(dir);
                     logger.Info(Invariant($"Backing up {Name} to {filPath}"));
@@ -189,9 +189,7 @@ namespace Hspi.DeviceData
                 {
                     data.Feature.Add(EProperty.AdditionalStatusData, new List<string>() { suffix! });
 
-                    var graphics = data.Feature[EProperty.StatusGraphics] as StatusGraphicCollection;
-
-                    if (graphics != null)
+                    if (data.Feature[EProperty.StatusGraphics] is StatusGraphicCollection graphics)
                     {
                         foreach (var statusGraphic in graphics.Values)
                         {
@@ -322,8 +320,7 @@ namespace Hspi.DeviceData
 #pragma warning restore CA1308 // Normalize strings to uppercase
             string imagePath = CreateImagePath(featureName);
 
-            FeatureFactory? newFeatureData = null;
-
+            FeatureFactory? newFeatureData;
             switch (feature.DataType)
             {
                 case TasmotaDeviceFeature.FeatureDataType.None:
@@ -428,23 +425,21 @@ namespace Hspi.DeviceData
                 if (payloadBytes != null && payloadBytes.Length > 0)
                 {
                     string payload = Encoding.UTF8.GetString(payloadBytes);
-                    using (var _ = await featureLock.EnterAsync(cancellationToken).ConfigureAwait(false))
-                    {
-                        var mqttTopicPrefix = MqttTopicPrefix;
+                    using var _ = await featureLock.EnterAsync(cancellationToken).ConfigureAwait(false);
+                    var mqttTopicPrefix = MqttTopicPrefix;
 
-                        if ((mqttTopicPrefix + "LWT") == topic)
+                    if ((mqttTopicPrefix + "LWT") == topic)
+                    {
+                        UpdateLWTValue(payload);
+                    }
+                    else
+                    {
+                        foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
                         {
-                            UpdateLWTValue(payload);
-                        }
-                        else
-                        {
-                            foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
+                            var sourceMQTTTopic = mqttTopicPrefix + sourceType.ToString().ToUpperInvariant();
+                            if (topic == sourceMQTTTopic)
                             {
-                                var sourceMQTTTopic = mqttTopicPrefix + sourceType.ToString().ToUpperInvariant();
-                                if (topic == sourceMQTTTopic)
-                                {
-                                    UpdateDevicesValues(new TasmotaFeatureSourceStatus(sourceType, JObject.Parse(payload)));
-                                }
+                                UpdateDevicesValues(new TasmotaFeatureSourceStatus(sourceType, JObject.Parse(payload)));
                             }
                         }
                     }
@@ -470,32 +465,30 @@ namespace Hspi.DeviceData
 
         private async Task UpdateDeviceProperties()
         {
-            using (var _ = await featureLock.EnterAsync(cancellationToken).ConfigureAwait(false))
+            using var _ = await featureLock.EnterAsync(cancellationToken).ConfigureAwait(false);
+            var data = this.Data;
+
+            Debug.Assert(data != null);
+            if (data == null)
             {
-                var data = this.Data;
-
-                Debug.Assert(data != null);
-                if (data == null)
-                {
-                    throw new Exception("Data is not unexpectedly null");
-                }
-
-                DeviceStatus = await TasmotaDeviceInterface.GetFullStatus(data, cancellationToken).ConfigureAwait(false);
-                UpdateDeviceName();
-
-                var device = HS.GetDeviceWithFeaturesByRef(RefId);
-
-                lwtDeviceRefId = CreateAndUpdateLWTFeature(device);
-                deviceControlDeviceRefId = CreateAndUpdateDeviceControlFeature(device);
-                features = CreateAndUpdateFeatures(data, device).ToImmutableDictionary();
-
-                foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
-                {
-                    UpdateDevicesValues(DeviceStatus.GetStatus(sourceType));
-                }
-
-                await MQTTSubscribe().ConfigureAwait(false);
+                throw new Exception("Data is not unexpectedly null");
             }
+
+            DeviceStatus = await TasmotaDeviceInterface.GetFullStatus(data, cancellationToken).ConfigureAwait(false);
+            UpdateDeviceName();
+
+            var device = HS.GetDeviceWithFeaturesByRef(RefId);
+
+            lwtDeviceRefId = CreateAndUpdateLWTFeature(device);
+            deviceControlDeviceRefId = CreateAndUpdateDeviceControlFeature(device);
+            features = CreateAndUpdateFeatures(data, device).ToImmutableDictionary();
+
+            foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
+            {
+                UpdateDevicesValues(DeviceStatus.GetStatus(sourceType));
+            }
+
+            await MQTTSubscribe().ConfigureAwait(false);
         }
 
         private void UpdateDevicesValues(TasmotaFeatureSourceStatus tasmotaStatus)

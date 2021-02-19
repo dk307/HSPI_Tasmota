@@ -12,10 +12,8 @@
 
             try
             {
-                using (var plugin = new HSPI_Tasmota.HSPI())
-                {
-                    plugin.Connect(args);
-                }
+                using var plugin = new HSPI_Tasmota.HSPI();
+                plugin.Connect(args);
             }
             finally
             {
@@ -23,6 +21,6 @@
             }
         }
 
-        private static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+        private static readonly NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
     }
 }
