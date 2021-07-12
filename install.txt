@@ -1,0 +1,6 @@
+﻿HSPI_Tasmota.exe,.,0
+HSPI_Tasmota.exe.config,.,0
+.,[DELALL],\html\Tasmota
+html.zip,[UNZIP],.\html\Tasmota
+
+ 
