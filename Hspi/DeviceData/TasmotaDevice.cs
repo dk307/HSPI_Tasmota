@@ -165,6 +165,25 @@ namespace Hspi.DeviceData
             GC.SuppressFinalize(this);
         }
 
+        public async Task RefreshValues()
+        {
+            using var _ = await featureLock.EnterAsync(cancellationToken).ConfigureAwait(false);
+            await RefreshValuesImpl().ConfigureAwait(false);
+        }
+
+        private async Task RefreshValuesImpl()
+        {
+            var data = GetValidatedData();
+
+            DeviceStatus = await TasmotaDeviceInterface.GetFullStatus(data, cancellationToken).ConfigureAwait(false);
+            UpdateDeviceName();
+
+            foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
+            {
+                UpdateDevicesValues(DeviceStatus.GetStatus(sourceType));
+            }
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)
@@ -454,6 +473,18 @@ namespace Hspi.DeviceData
             }
         }
 
+        private async Task RefreshValuesImpl()
+        {
+            var data = GetValidatedData();
+
+            DeviceStatus = await TasmotaDeviceInterface.GetFullStatus(data, cancellationToken).ConfigureAwait(false);
+            UpdateDeviceName();
+
+            foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
+            {
+                UpdateDevicesValues(DeviceStatus.GetStatus(sourceType));
+            }
+        }
         private void UpdateDeviceName()
         {
             string? deviceName = DeviceStatus.DeviceName;
