@@ -1,1 +1,1 @@
-# HSPI_Tasmota
+# HS4 plugin for Tasmota
