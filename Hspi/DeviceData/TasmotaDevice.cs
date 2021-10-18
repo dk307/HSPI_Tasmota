@@ -103,9 +103,14 @@ namespace Hspi.DeviceData
 
                 if (controlEvent.TargetRef == deviceControlDeviceRefId)
                 {
-                    if (controlEvent.ControlValue == DeviceControlBackUpId)
+                    switch (controlEvent.ControlValue)
                     {
-                        await SendBackupCommand().ConfigureAwait(false);
+                        case DeviceControlBackUpId:
+                            await SendBackupCommand().ConfigureAwait(false);
+                            break;
+                        case DeviceControlRefreshId:
+                            await RefreshValuesImpl().ConfigureAwait(false);
+                            break;
                     }
                     return true;
                 }
@@ -163,6 +168,25 @@ namespace Hspi.DeviceData
         {
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public async Task RefreshValues()
+        {
+            using var _ = await featureLock.EnterAsync(cancellationToken).ConfigureAwait(false);
+            await RefreshValuesImpl().ConfigureAwait(false);
+        }
+
+        private async Task RefreshValuesImpl()
+        {
+            var data = GetValidatedData();
+
+            DeviceStatus = await TasmotaDeviceInterface.GetFullStatus(data, cancellationToken).ConfigureAwait(false);
+            UpdateDeviceName();
+
+            foreach (var sourceType in EnumHelper.GetValues<TasmotaDeviceFeature.FeatureSource>())
+            {
+                UpdateDevicesValues(DeviceStatus.GetStatus(sourceType));
+            }
         }
 
         protected virtual void Dispose(bool disposing)
@@ -238,6 +262,7 @@ namespace Hspi.DeviceData
                     .AsType(EFeatureType.Generic, 0)
                     .WithExtraData(HSDeviceHelper.CreatePlugInExtraDataForDeviceType(DeviceControlDeviceType))
                     .AddButton(DeviceControlBackUpId, "Backup")
+                    .AddButton(DeviceControlRefreshId, "Refresh")
                     .AddGraphicForRange(CreateImagePath("devicecontrol"), int.MinValue, int.MaxValue)
                     .PrepareForHsDevice(RefId);
 
@@ -454,6 +479,7 @@ namespace Hspi.DeviceData
             }
         }
 
+
         private void UpdateDeviceName()
         {
             string? deviceName = DeviceStatus.DeviceName;
@@ -626,6 +652,7 @@ namespace Hspi.DeviceData
         }
 
         private const int DeviceControlBackUpId = 100;
+        private const int DeviceControlRefreshId = 101;
 
         private const string DeviceControlDeviceType = "DeviceControl";
 

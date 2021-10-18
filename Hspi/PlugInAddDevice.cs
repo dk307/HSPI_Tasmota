@@ -57,10 +57,15 @@ namespace Hspi
             if (tasmotaDevices.TryGetValue(deviceRef, out var tasmotaDevice))
             {
                 var data = tasmotaDevice.Data;
-                page = page.WithInput(nameof(TasmotaDeviceInfo.Uri), "Http url of the device", data?.Uri?.ToString() ?? string.Empty, EInputType.Url)
-                           .WithInput(nameof(TasmotaDeviceInfo.User), "User", data?.User ?? string.Empty, EInputType.Text)
-                           .WithInput(nameof(TasmotaDeviceInfo.Password), "Password", data?.Password ?? string.Empty, EInputType.Password);
 
+                var networkInfoView = new GridView("id_network", "Network");
+        
+                networkInfoView.AddView(new InputView(nameof(TasmotaDeviceInfo.Uri), "Http url of the device", data?.Uri?.ToString() ?? string.Empty, EInputType.Url));
+                networkInfoView.AddView(new InputView(nameof(TasmotaDeviceInfo.User), "User", data?.User ?? string.Empty, EInputType.Text));
+                networkInfoView.AddView(new InputView(nameof(TasmotaDeviceInfo.Password), "Password", data?.Password ?? string.Empty, EInputType.Password));
+
+                page = page.WithView(networkInfoView);
+   
                 try
                 {
                     if (data != null)
@@ -71,12 +76,18 @@ namespace Hspi
 
                         var groups = possibleFeatures.GroupBy((x) => x.SourceType);
 
-                        page = page.WithInput(TelePeriodId, TelePeriodId,
-                                               telePeriod.ToString(CultureInfo.InvariantCulture), EInputType.Number);
+                        var settingView = new GridView("id_settings", "Settings");
+
+                        settingView.AddView(new InputView(TelePeriodId, TelePeriodId,
+                                               telePeriod.ToString(CultureInfo.InvariantCulture), EInputType.Number));
+
+                        page = page.WithView(settingView);
 
                         foreach (var group in groups)
                         {
-                            AddFeatureEnabledOptions(EnumHelper.GetDescription(group.Key), group, data?.EnabledFeatures ?? ImmutableHashSet<TasmotaDeviceFeature>.Empty);
+                            var groupView = new GridView("id_" + group.Key.ToString(), group.Key.ToString());
+                            AddFeatureEnabledOptions(groupView, EnumHelper.GetDescription(group.Key), group, data?.EnabledFeatures ?? ImmutableHashSet<TasmotaDeviceFeature>.Empty);
+                            page = page.WithView(groupView);
                         }
                     }
                 }
@@ -92,7 +103,7 @@ namespace Hspi
 
             return page.Page.ToJsonString();
 
-            void AddFeatureEnabledOptions(string name,
+            static void AddFeatureEnabledOptions(GridView view, string name,
                                           IEnumerable<TasmotaDeviceFeature> possibleFeatures,
                                           ImmutableHashSet<TasmotaDeviceFeature> enabledList)
             {
@@ -131,11 +142,13 @@ namespace Hspi
                         selected = selectNone;
                     }
 
-                    page = page.WithDropDownSelectList(id,
-                                                       Invariant($"{name}:{element.Name}"),
+                   
+                    view.AddView( new SelectListView(id,
+                                                       Invariant($"{element.Name}"),
                                                        typeOptions,
                                                        typeOptionKeys,
-                                                       selected);
+                                                       ESelectListType.DropDown,
+                                                       selected));
                 }
             }
         }
