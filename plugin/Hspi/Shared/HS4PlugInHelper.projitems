@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>0fe7498a-7241-45ff-837a-a62076d41398</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>HS4PlugInHelper</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Hspi\DeviceData\HSDeviceHelper.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Hspi\Utils\EnumHelper.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Hspi\Utils\ExceptionHelper.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Hspi\Utils\ObjectSerialize.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Hspi\Utils\ScribanHelper.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Hspi\Utils\TaskHelper.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)LICENSE" />
+    <None Include="$(MSBuildThisFileDirectory)README.md" />
+  </ItemGroup>
+</Project>

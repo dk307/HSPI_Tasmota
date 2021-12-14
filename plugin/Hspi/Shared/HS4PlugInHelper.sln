@@ -1,0 +1,18 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30804.86
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "HS4PlugInHelper", "HS4PlugInHelper.shproj", "{0FE7498A-7241-45FF-837A-A62076D41398}"
+EndProject
+Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		HS4PlugInHelper.projitems*{0fe7498a-7241-45ff-837a-a62076d41398}*SharedItemsImports = 13
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E64DC289-E787-4B8F-BF5F-C6FE8C9E8261}
+	EndGlobalSection
+EndGlobal
