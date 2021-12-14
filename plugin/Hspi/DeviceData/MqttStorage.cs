@@ -1,6 +1,7 @@
 ﻿using MQTTnet;
 using MQTTnet.Server;
 using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
@@ -27,7 +28,7 @@ namespace Hspi.DeviceData
                 retainedMessages = JsonConvert.DeserializeObject<List<MqttApplicationMessage>>(json);
             } 
 
-            return Task.FromResult(retainedMessages ?? new List<MqttApplicationMessage>());
+            return Task.FromResult(retainedMessages ?? Array.Empty<MqttApplicationMessage>());
         }
 
         public Task SaveRetainedMessagesAsync(IList<MqttApplicationMessage> messages)

@@ -1,6 +1,7 @@
 ﻿using HomeSeer.PluginSdk;
 using HomeSeer.PluginSdk.Devices;
 using Newtonsoft.Json;
+using System;
 using System.Diagnostics.CodeAnalysis;
 using static System.FormattableString;
 
@@ -10,7 +11,7 @@ namespace Hspi.DeviceData
 {
     internal abstract class DeviceBase<T> where T : class
     {
-        public DeviceBase(IHsController HS, int refId)
+        protected DeviceBase(IHsController HS, int refId)
         {
             this.HS = HS;
             RefId = refId;
@@ -40,12 +41,7 @@ namespace Hspi.DeviceData
 
         public T GetValidatedData()
         {
-            var data = Data;
-            if (data == null)
-            {
-                throw new System.Exception(Invariant($"Plugin Data is not valid for {Name}"));
-            }
-            return data;
+            return Data ?? throw new InvalidOperationException(Invariant($"Plugin Data is not valid for {Name}"));
         }
 
         public string Name => HSDeviceHelper.GetName(HS, RefId);

@@ -6,13 +6,13 @@ using System.Net;
 
 namespace Hspi
 {
-    internal sealed record MQTTServerConfiguration
+    internal sealed record MqttServerConfiguration
     {
         [JsonConverter(typeof(IPAddressConverter))]
-        public readonly IPAddress? BoundIPAddress;
-        public readonly int Port;
+        public IPAddress? BoundIPAddress { get; }
+        public int Port { get; }
 
-        public MQTTServerConfiguration(IPAddress? boundIPAddress, int port)
+        public MqttServerConfiguration(IPAddress? boundIPAddress, int port)
         {
             BoundIPAddress = boundIPAddress;
             Port = port;
@@ -27,7 +27,7 @@ namespace Hspi
 
             public override void WriteJson(JsonWriter writer, object? value, JsonSerializer serializer)
             {
-                writer.WriteValue(value?.ToString() ?? null);
+                writer.WriteValue(value?.ToString());
             }
 
             public override object? ReadJson(JsonReader reader, Type objectType, object? existingValue, JsonSerializer serializer)

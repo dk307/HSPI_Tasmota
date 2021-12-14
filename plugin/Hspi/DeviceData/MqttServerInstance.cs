@@ -12,17 +12,17 @@ namespace Hspi.DeviceData
     internal sealed class MqttServerInstance
     {
         public MqttServerInstance(IMqttServer? server,
-                                  MQTTServerConfiguration configuration)
+                                  MqttServerConfiguration configuration)
         {
             this.Server = server;
             this.Configuration = configuration;
         }
 
-        public MQTTServerConfiguration Configuration { get; }
+        public MqttServerConfiguration Configuration { get; }
 
         public IMqttServer? Server { get; }
 
-        public static async Task<MqttServerInstance> StartServer(MQTTServerConfiguration serverConfiguration)
+        public static async Task<MqttServerInstance> StartServer(MqttServerConfiguration serverConfiguration)
         {
             logger.Info($"Starting Mqtt Server");
             string storagefile = Path.Combine(PlugInData.HomeSeerDirectory, "data", PlugInData.PlugInId, "mqtt", "retained.json");

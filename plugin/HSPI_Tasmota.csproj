@@ -89,7 +89,7 @@
     <Compile Include="Hspi\DeviceData\Tasmota\TasmotaDeviceStatus.cs" />
     <Compile Include="Hspi\DeviceData\Tasmota\TasmotaFeatureSourceStatus.cs" />
     <Compile Include="Hspi\HSPI.cs" />
-    <Compile Include="Hspi\MQTTServerConfiguration.cs" />
+    <Compile Include="Hspi\MqttServerConfiguration.cs" />
     <Compile Include="Hspi\PlugIn.cs" />
     <Compile Include="Hspi\PlugInAddDevice.cs" />
     <Compile Include="Hspi\PluginConfig.cs" />

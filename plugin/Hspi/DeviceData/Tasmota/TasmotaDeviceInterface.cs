@@ -143,6 +143,6 @@ namespace Hspi.DeviceData.Tasmota
             return JsonConvert.DeserializeObject<IDictionary<string, string>>(result)[command];
         }
 
-        private static readonly HttpClient httpClient = new HttpClient();
+        private static readonly HttpClient httpClient = new();
     }
 }
