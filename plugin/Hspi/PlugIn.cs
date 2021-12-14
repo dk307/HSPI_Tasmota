@@ -22,41 +22,36 @@ namespace Hspi
         {
         }
 
-        public override void HsEvent(Constants.HSEvent eventType, object[] parameters)
+        public override void HsEvent(Constants.HSEvent eventType, object[] @params)
         {
-            if (eventType == Constants.HSEvent.CONFIG_CHANGE)
+            bool deleteDeviceEvent = eventType == Constants.HSEvent.CONFIG_CHANGE && 
+                                     @params.Length == 6 && 
+                                     Convert.ToInt32(@params[1], CultureInfo.InvariantCulture) == 0 && 
+                                     Convert.ToInt32(@params[4], CultureInfo.InvariantCulture) == 2;
+            if (deleteDeviceEvent)
             {
-                if (parameters.Length == 6)
+                int deletedDeviceRefId = Convert.ToInt32(@params[3], CultureInfo.InvariantCulture);
+
+                var devices = GetTasmotaDevices().ResultForSync();
+
+                if (devices.ContainsKey(deletedDeviceRefId))
                 {
-                    if (Convert.ToInt32(parameters[1], CultureInfo.InvariantCulture) == 0) // Device Type change
-                    {
-                        if (Convert.ToInt32(parameters[4], CultureInfo.InvariantCulture) == 2) //Delete
-                        {
-                            int deletedDeviceRefId = Convert.ToInt32(parameters[3], CultureInfo.InvariantCulture);
-
-                            var devices = GetTasmotaDevices().ResultForSync();
-
-                            if (devices.ContainsKey(deletedDeviceRefId))
-                            {
-                                logger.Info($"PlugIn Device refId {deletedDeviceRefId} deleted");
-                                RestartProcessing();
-                            }
-                        }
-                    }
+                    logger.Info($"PlugIn Device refId {deletedDeviceRefId} deleted");
+                    RestartProcessing();
                 }
             }
 
-            base.HsEvent(eventType, parameters);
+            base.HsEvent(eventType, @params);
         }
 
-        public override void SetIOMulti(List<ControlEvent> colSends)
+        public override void SetIOMulti(List<ControlEvent> colSend)
         {
             SetIOMultiAsync().ResultForSync();
 
             async Task SetIOMultiAsync()
             {
                 var devices = await GetTasmotaDevices().ConfigureAwait(false);
-                foreach (var colSend in colSends)
+                foreach (var colSend in colSend)
                 {
                     foreach (var device in devices)
                     {
@@ -187,7 +182,7 @@ namespace Hspi
         }
 
         private readonly static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
-        private readonly AsyncLock dataLock = new AsyncLock();
+        private readonly AsyncLock dataLock = new();
         private MqttServerInstance? mqttServerInstance;
         private PluginConfig? pluginConfig;
         private volatile TasmotaDeviceManager? tasmotaDeviceManager;
