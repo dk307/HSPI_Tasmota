@@ -20,7 +20,7 @@ build_script:
 
     msbuild "C:\projects\hspi-tasmota\HSPI_Tasmota.sln" /m /verbosity:minimal /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll" /p:Configuration=Release /p:Platform="Any CPU"
 after_build:
- - ps: Get-ChildItem bin\Release\HSPI_Tasmota*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
+ - ps: Get-ChildItem plugin\bin\Release\HSPI_Tasmota*.zip | % { Push-AppveyorArtifact $_.FullName -FileName $_.Name }
 artifacts:
-- path: bin\Release\updater_override.json
+- path: plugin\bin\Release\updater_override.json
   name: config
