@@ -75,8 +75,6 @@ namespace Hspi
         {
             try
             {
-                // bool result = ImportDeviceFromDB(devOrFeatRef).ResultForSync();
-                // return result ? EPollResponse.NotFound : EPollResponse.Ok;
                 return EPollResponse.Ok;
             }
             catch (Exception ex)

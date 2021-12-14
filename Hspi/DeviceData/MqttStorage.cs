@@ -20,18 +20,14 @@ namespace Hspi.DeviceData
 
         public Task<IList<MqttApplicationMessage>> LoadRetainedMessagesAsync()
         {
-            IList<MqttApplicationMessage> retainedMessages;
+            IList<MqttApplicationMessage>? retainedMessages = null;
             if (File.Exists(Filename))
             {
                 var json = File.ReadAllText(Filename);
                 retainedMessages = JsonConvert.DeserializeObject<List<MqttApplicationMessage>>(json);
-            }
-            else
-            {
-                retainedMessages = new List<MqttApplicationMessage>();
-            }
+            } 
 
-            return Task.FromResult(retainedMessages);
+            return Task.FromResult(retainedMessages ?? new List<MqttApplicationMessage>());
         }
 
         public Task SaveRetainedMessagesAsync(IList<MqttApplicationMessage> messages)

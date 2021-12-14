@@ -13,40 +13,6 @@ namespace Hspi
 {
     internal partial class PlugIn : HspiBase
     {
-        private const string DebugLoggingConfiguration = "debuglogging";
-        private const string LogToFileConfiguration = "logtofile";
-
-        public IDictionary<string, object> GetGeneralInformation()
-        {
-            var configuration = new Dictionary<string, object>
-            {
-                [DebugLoggingConfiguration] = pluginConfig!.DebugLogging,
-                [LogToFileConfiguration] = pluginConfig!.LogToFile
-            };
-            return configuration;
-        }
-
-        public IList<string> UpdateGeneralConfiguration(IDictionary<string, string> configuration)
-        {
-            var errors = new List<string>();
-            try
-            {
-                pluginConfig!.DebugLogging = CheckBoolValue(configuration, DebugLoggingConfiguration);
-                pluginConfig!.LogToFile = CheckBoolValue(configuration, LogToFileConfiguration);
-                PluginConfigChanged();
-            }
-            catch (Exception ex)
-            {
-                errors.Add(ex.GetFullMessage());
-            }
-            return errors;
-
-            static bool CheckBoolValue(IDictionary<string, string> configuration, string key)
-            {
-                return configuration.ContainsKey(key) && configuration[key] == "on";
-            }
-        }
-
         public IList<IDictionary<string, object>> GetDevices()
         {
             return GetDevicesAsync().ResultForSync();
@@ -100,6 +66,16 @@ namespace Hspi
             }
         }
 
+        public IDictionary<string, object> GetGeneralInformation()
+        {
+            var configuration = new Dictionary<string, object>
+            {
+                [DebugLoggingConfiguration] = pluginConfig!.DebugLogging,
+                [LogToFileConfiguration] = pluginConfig!.LogToFile
+            };
+            return configuration;
+        }
+
         public IDictionary<string, object> GetMQTTServerConfiguration()
         {
             return ScribanHelper.ToDictionary(pluginConfig!.MQTTServerConfiguration);
@@ -132,5 +108,29 @@ namespace Hspi
             }
             return errors;
         }
+
+        public IList<string> UpdateGeneralConfiguration(IDictionary<string, string> configuration)
+        {
+            var errors = new List<string>();
+            try
+            {
+                pluginConfig!.DebugLogging = CheckBoolValue(configuration, DebugLoggingConfiguration);
+                pluginConfig!.LogToFile = CheckBoolValue(configuration, LogToFileConfiguration);
+                PluginConfigChanged();
+            }
+            catch (Exception ex)
+            {
+                errors.Add(ex.GetFullMessage());
+            }
+            return errors;
+
+            static bool CheckBoolValue(IDictionary<string, string> configuration, string key)
+            {
+                return configuration.ContainsKey(key) && configuration[key] == "on";
+            }
+        }
+
+        private const string DebugLoggingConfiguration = "debuglogging";
+        private const string LogToFileConfiguration = "logtofile";
     }
 }

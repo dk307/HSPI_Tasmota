@@ -1,4 +1,4 @@
-﻿using MQTTnet.Diagnostics;
+﻿using MQTTnet.Diagnostics.Logger;
 using NLog;
 using System;
 
@@ -6,23 +6,18 @@ using System;
 
 namespace Hspi.DeviceData
 {
-    internal sealed class MqttNetLogger : IMqttNetLogger, IMqttNetScopedLogger
+    internal sealed class MqttNetLogger : IMqttNetLogger
     {
         public MqttNetLogger(string source = "[MQTT]")
         {
             this.source = source;
         }
 
-        public IMqttNetScopedLogger CreateScopedLogger(string source)
-        {
-            return new MqttNetLogger($"{this.source}[{source}]");
-        }
-
         public void Publish(MqttNetLogLevel logLevel,
                             string source,
                             string message, object[] parameters, System.Exception? exception)
         {
-            LogEventInfo logEventInfo = new LogEventInfo();
+            LogEventInfo logEventInfo = new();
 
             switch (logLevel)
             {
@@ -55,7 +50,7 @@ namespace Hspi.DeviceData
             Publish(logLevel, source, message, parameters, exception);
         }
 
-        private readonly static NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
+        private static readonly NLog.Logger logger = NLog.LogManager.GetCurrentClassLogger();
         private readonly string source;
     }
 }

@@ -32,10 +32,10 @@ namespace Hspi.DeviceData.Tasmota
 
         public static async Task<int> GetTelePeriod(TasmotaDeviceInfo data, CancellationToken cancellationToken)
         {
-            string command = Invariant($"TelePeriod");
+            string command = "TelePeriod";
             var resultString = await SendWebCommandForString(data, command, cancellationToken).ConfigureAwait(false);
             var jobject = JObject.Parse(resultString);
-            return jobject?[command]?.ToObject<int>() ?? throw new KeyNotFoundException("TelePeriod");
+            return jobject?[command]?.ToObject<int>() ?? throw new KeyNotFoundException(command);
         }
 
         public static async Task SendOnOffCommand(TasmotaDeviceInfo data, string command, bool isOn,
