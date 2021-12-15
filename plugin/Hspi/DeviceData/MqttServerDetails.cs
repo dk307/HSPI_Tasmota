@@ -10,7 +10,7 @@ namespace Hspi.DeviceData
             Port = port;
         }
 
-        public readonly string Host;
-        public readonly int Port;
+        public string Host { get; }
+        public int Port { get; }
     }
 }

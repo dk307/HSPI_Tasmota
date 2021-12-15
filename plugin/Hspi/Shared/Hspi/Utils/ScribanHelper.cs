@@ -22,9 +22,9 @@ namespace Hspi.Utils
             {
                 ContractResolver = new LowercaseContractResolver()
             };
-            var json = JsonConvert.SerializeObject(obj, Formatting.Indented, settings);
+            var json = JsonConvert.SerializeObject(obj, Formatting.None, settings);
             var dict = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
-            return dict;
+            return dict ?? throw new InvalidOperationException();
         }
 
         public static IDictionary<string, string> ToDictionaryS<T>(T obj)
@@ -33,26 +33,26 @@ namespace Hspi.Utils
             {
                 ContractResolver = new LowercaseContractResolver()
             };
-            var json = JsonConvert.SerializeObject(obj, Formatting.Indented, settings);
+            var json = JsonConvert.SerializeObject(obj, Formatting.None, settings);
             var dict = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
-            return dict;
+            return dict ?? throw new InvalidOperationException();
         }
 
         private static T Deserialize<T>(string json) where T : class
         {
-            JsonSerializer serializer = new JsonSerializer();
+            JsonSerializer serializer = new();
             serializer.Converters.Add(new BoolConverter());
-            using StringReader stringReader = new StringReader(json);
-            using JsonTextReader reader = new JsonTextReader(stringReader);
+            using StringReader stringReader = new(json);
+            using JsonTextReader reader = new(stringReader);
             var obj = serializer.Deserialize<T>(reader);
             if (obj == null)
             {
-                throw new Exception("Conversion Failed");
+                throw new InvalidOperationException("Conversion Failed");
             }
             return obj;
         }
 
-        private class BoolConverter : JsonConverter
+        private sealed class BoolConverter : JsonConverter
         {
             public override bool CanConvert(Type objectType)
             {
@@ -77,7 +77,7 @@ namespace Hspi.Utils
             private const string On = "on";
         }
 
-        private class LowercaseContractResolver : DefaultContractResolver
+        private sealed class LowercaseContractResolver : DefaultContractResolver
         {
             protected override string ResolvePropertyName(string propertyName)
             {

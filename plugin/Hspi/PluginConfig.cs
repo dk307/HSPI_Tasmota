@@ -15,7 +15,7 @@ namespace Hspi
         }
 
         [DisallowNull]
-        public MQTTServerConfiguration MQTTServerConfiguration
+        public MqttServerConfiguration MQTTServerConfiguration
         {
             get
             {
@@ -32,7 +32,7 @@ namespace Hspi
             }
         }
 
-        private MQTTServerConfiguration LoadDBSettings()
+        private MqttServerConfiguration LoadDBSettings()
         {
             string ipAddressString = GetValue(MQTTServerIPAddressKey, string.Empty);
             int port = GetValue(MQTTServerPortKey, 1883);
@@ -42,10 +42,10 @@ namespace Hspi
                 ipAddress = null;
             }
 
-            return new MQTTServerConfiguration( ipAddress, port);
+            return new MqttServerConfiguration( ipAddress, port);
         }
 
-        private MQTTServerConfiguration mQTTServerConfiguration;
+        private MqttServerConfiguration mQTTServerConfiguration;
         private readonly AsyncReaderWriterLock configLock = new AsyncReaderWriterLock();
         private const string MQTTServerIPAddressKey = "MQTTServerIPAddress";
         private const string MQTTServerPortKey = "MQTTServerPort";

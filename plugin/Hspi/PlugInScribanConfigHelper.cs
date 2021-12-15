@@ -57,7 +57,10 @@ namespace Hspi
                             data.Add("RestartReason", status.RestartReason ?? string.Empty);
                         }
                     }
-                    catch { }
+                    catch
+                    {
+                        // Ignore errors while reading tasmota
+                    }
 
                     list.Add(data);
                 }
@@ -97,7 +100,7 @@ namespace Hspi
                 if (errors.Count == 0)
                 {
                     pluginConfig!.MQTTServerConfiguration =
-                        ScribanHelper.FromDictionary<MQTTServerConfiguration>(configuration);
+                        ScribanHelper.FromDictionary<MqttServerConfiguration>(configuration);
 
                     PluginConfigChanged();
                 }

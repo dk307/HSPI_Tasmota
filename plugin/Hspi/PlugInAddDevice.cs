@@ -49,12 +49,12 @@ namespace Hspi
             return data;
         }
 
-        public override string GetJuiDeviceConfigPage(int deviceRef)
+        public override string GetJuiDeviceConfigPage(int devOrFeatRef)
         {
             var page = PageFactory.CreateDeviceConfigPage(PlugInData.ConfigPageId, "Tasmota Device Configuration");
             var tasmotaDevices = GetTasmotaDevices().ResultForSync();
 
-            if (tasmotaDevices.TryGetValue(deviceRef, out var tasmotaDevice))
+            if (tasmotaDevices.TryGetValue(devOrFeatRef, out var tasmotaDevice))
             {
                 var data = tasmotaDevice.Data;
 
@@ -86,7 +86,7 @@ namespace Hspi
                         foreach (var group in groups)
                         {
                             var groupView = new GridView("id_" + group.Key.ToString(), group.Key.ToString());
-                            AddFeatureEnabledOptions(groupView, EnumHelper.GetDescription(group.Key), group, data?.EnabledFeatures ?? ImmutableHashSet<TasmotaDeviceFeature>.Empty);
+                            AddFeatureEnabledOptions(groupView, group, data?.EnabledFeatures ?? ImmutableHashSet<TasmotaDeviceFeature>.Empty);
                             page = page.WithView(groupView);
                         }
                     }
@@ -103,7 +103,7 @@ namespace Hspi
 
             return page.Page.ToJsonString();
 
-            static void AddFeatureEnabledOptions(GridView view, string name,
+            static void AddFeatureEnabledOptions(GridView view,
                                           IEnumerable<TasmotaDeviceFeature> possibleFeatures,
                                           ImmutableHashSet<TasmotaDeviceFeature> enabledList)
             {
@@ -153,11 +153,11 @@ namespace Hspi
             }
         }
 
-        protected override bool OnDeviceConfigChange(Page deviceConfigPage, int deviceRef)
+        protected override bool OnDeviceConfigChange(Page deviceConfigPage, int devOrFeatRef)
         {
             var tasmotaDevices = GetTasmotaDevices().ResultForSync();
 
-            if (tasmotaDevices.TryGetValue(deviceRef, out var tasmotaDevice))
+            if (tasmotaDevices.TryGetValue(devOrFeatRef, out var tasmotaDevice))
             {
                 try
                 {
@@ -195,7 +195,7 @@ namespace Hspi
                         throw;
                     }
 
-                    logger.Warn(Invariant($"Failed to update device with {ExceptionHelper.GetFullMessage(ex)} for RefId: {deviceRef}"));
+                    logger.Warn(Invariant($"Failed to update device with {ExceptionHelper.GetFullMessage(ex)} for RefId: {devOrFeatRef}"));
                     throw;
                 }
                 finally
