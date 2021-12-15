@@ -306,6 +306,7 @@ namespace Hspi.DeviceData
                     }
                 }
             }
+
             return featuresNew;
         }
 
@@ -338,11 +339,10 @@ namespace Hspi.DeviceData
             return lwtRefId.Value;
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1308:Normalize strings to uppercase", Justification = "<Pending>")]
         private int CreateDeviceFeature(TasmotaDeviceFeature feature)
         {
-#pragma warning disable CA1308 // Normalize strings to uppercase
             string featureName = feature.DataType.ToString().ToLowerInvariant();
-#pragma warning restore CA1308 // Normalize strings to uppercase
             string imagePath = CreateImagePath(featureName);
 
             FeatureFactory? newFeatureData;
@@ -373,7 +373,9 @@ namespace Hspi.DeviceData
                                                        .AddGraphicForValue(CreateImagePath("off.png"), OffValue, offText)
                                                        .AddButton(OnValue, onText, controlUse: EControlUse.On)
                                                        .AddButton(OffValue, offText, controlUse: EControlUse.Off)
-                                                       .WithMiscFlags(EMiscFlag.SetDoesNotChangeLastChange);
+                                                       .WithMiscFlags(EMiscFlag.SetDoesNotChangeLastChange)
+                                                       .WithDisplayType(EFeatureDisplayType.Important);
+
                     }
                     break;
 
